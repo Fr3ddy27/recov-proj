@@ -60,7 +60,7 @@ DATABASES = {
         'NAME': 'recovery_db',
         'USER': 'postgres',
         'PASSWORD': 'L0V35L30NA4EVER',
-        'HOST': 'localhost',
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
@@ -72,6 +72,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [ BASE_DIR / 'dashboard' / 'static' ]
+STATIC_ROOT = BASE_DIR / "staticfiles"  # <-- required for collectstatic
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
