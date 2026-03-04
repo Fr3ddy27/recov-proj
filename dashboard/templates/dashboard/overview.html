@@ -1,0 +1,387 @@
+{% extends 'dashboard/base.html' %}
+{% block content %}
+{% load humanize %}
+
+<style>
+/* Pie size to fill empty space below*/
+.chart-container {
+  min-height: 90%;
+  position: relative;
+  width: 100%;
+  }
+
+  .chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+/*End of pie size*/  
+</style>
+
+
+<div class="space-y-6">
+  <!-- ================= TOP KPIs ================= -->
+  <div class="flex items-start justify-between">
+    <div class="grid md:grid-cols-3 gap-4 flex-1">
+      <div class="card-blue p-5">
+        <div class="text-xs opacity-80 mb-2">RECOVERY BUDGET</div>
+        <div class="text-2xl font-bold">VT {{ RECOVERY_BUDGET|intcomma }}</div>
+      </div>
+
+      <div class="card-blue p-5">
+        <div class="text-xs opacity-80 mb-2">NUM. OF RECOVERY PROJECTS</div>
+        <div class="text-2xl font-bold">{{ RECOVERY_PROJECTS_COUNT }}</div>
+      </div>
+
+
+    </div>
+
+    <!--<button onclick="window.print()"
+            class="ml-4 bg-blue-700 hover:bg-blue-800 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-colors"
+            title="Print this page">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+           stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 9V3h12v6m-3 11H9v-5h6v5zm6-10H3v7h3v4h12v-4h3v-7z" />
+      </svg>
+    </button> -->
+    
+  <button onclick="downloadPDF()"
+        class="ml-4 bg-blue-700 hover:bg-blue-800 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-colors"
+        title="Download PDF" style="place-self:flex-end">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+           stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 9V3h12v6m-3 11H9v-5h6v5zm6-10H3v7h3v4h12v-4h3v-7z" />
+      </svg>
+</button>
+
+  </div>
+
+  <!-- ================= MIDDLE SECTION ================= -->
+  <div class="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
+
+    <!-- ================= LEFT ================= -->
+    <div class="card p-5">
+
+      <!-- Approved / Disbursed -->
+      <div class="mb-6">
+        <div class="flex justify-between text-xs text-slate-600 mb-2">
+          <span>Approved</span>
+          <span>Disbursed</span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-6">
+          <div class="bg-blue-600 h-full rounded-full" style="width: {{ DISBURSED_PCT|default:0 }}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-600 mt-2">
+          <span>VT {{ RECOVERY_BUDGET|intcomma }}</span>
+          <span>VT {{ DISBURSED_BUDGET|default:0|intcomma }}</span>
+        </div>
+      </div>
+
+      <div class="border-t my-5"></div>
+
+      <!-- ================= FUNDING SOURCES ================= -->
+      <div class="text-xs uppercase text-slate-500 mb-4">FUNDING SOURCES</div>
+
+      <div class="space-y-5">
+        <div class="max-h-80 overflow-y-auto pr-2 space-y-5"> <!-- adding vertical scrolling -->
+        {% for f in FUNDING_SOURCES %}
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="font-medium">{{ f.name }}</span>
+            <span class="text-slate-500">VT {{ f.amount|intcomma }}</span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex-1 bg-slate-200 rounded-full h-3">
+              <div class="bg-blue-600 h-full rounded-full"
+                   style="width: {{ f.pct }}%"></div>
+            </div>
+
+            <!-- 🔗 CONNECTED TO PIE CHART -->
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox"
+                     class="sr-only peer funding-toggle"
+                     data-label="{{ f.name }}"
+                     {% if f.on %}checked{% endif %}>
+              <div class="w-11 h-6 bg-slate-300 rounded-full peer peer-checked:bg-blue-600 transition-all
+                          after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                          after:w-5 after:h-5 after:bg-white after:rounded-full
+                          after:transition-all peer-checked:after:translate-x-5"></div>
+              <span class="ml-2 text-xs font-medium text-slate-600">
+                {% if f.on %}{% else %}{% endif %} <!-- Removed 'ON' & 'OFF' when toggling-->
+                <!-- {% if f.on %}ON{% else %}OFF{% endif %}  -->
+              </span>
+            </label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    </div>
+
+    <!-- ================= RIGHT ================= -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <div class="card p-5">
+      <div class="text-xs uppercase text-slate-500 mb-4">FUND DONORS</div>
+      <div class="h-80 chart-container">
+        <canvas id="pieFunding"></canvas>
+      </div>
+    </div>
+
+    <div class="card p-5">
+      <div class="text-xs uppercase text-slate-500 mb-4">SUMMARY OF PROJECT STATUS</div>
+      <!--<div class="h-80 chart-container"> ORIGINAL -->
+      <div class="h-80 mt-14">
+        <canvas id="pieStatus"></canvas>
+      </div>
+    </div>
+
+    </div>
+  </div>
+</div>
+<br>
+<!-- IMPLEMENTING AGENCY -->
+  <div>
+    <div class="mb-3 text-xs uppercase text-slate-500">RECOVERY PROJECTS BY IMPLEMENTING AGENCIES</div>
+    <div class="card overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-slate-600 uppercase text-xs">
+            <tr>
+              <th class="text-left px-4 py-3">IMPLEMENTING AGENCY</th>
+              <th class="text-left px-4 py-3"># OF PROJECTS</th>
+              <th class="text-left px-4 py-3">APPROVED BUDGET</th>
+              <th class="text-left px-4 py-3">EXPENDITURE</th>
+              <th class="text-left px-4 py-3">REMAINING</th>
+              <th class="text-left px-4 py-3">% SPENT</th>
+              <th class="text-left px-4 py-3">PROGRESS</th>
+              <th class="text-left px-4 py-3">STATUS</th>
+
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for m in MINISTRY_DATA %}
+            <tr class="hover:bg-slate-50 cursor-pointer transition-colors"
+                ondblclick="showProjectSummary('{{ m.ministry|escapejs }}')">
+              <td class="px-4 py-3 font-medium">{{ m.ministry|default:"Unknown Agency" }}</td>
+              <td class="px-4 py-3">{{ m.num_projects }}</td>
+              <td class="px-4 py-3">VT {{ m.approved|intcomma }}</td>
+              <td class="px-4 py-3">VT {{ m.expenditure|default:"0"|intcomma }}</td>
+              <td class="px-4 py-3">VT {{ m.remaining|default:"0"|intcomma }}</td>
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 bg-slate-200 rounded-full h-3">
+                    <div class="bg-blue-600 h-full rounded-full" style="width: {{ m.spent_pct|default:"0" }}%"></div>
+                  </div>
+                  <span class="text-xs font-medium w-12 text-right">{{ m.spent_pct|default:"0" }}%</span>
+                </div>
+              </td>
+            <td class="px-4 py-3">
+              <span class="text-xs font-medium">
+                {{ m.avg_progress_pct|default:"0" }}%
+              </span>
+            </td>
+              <td class="px-4 py-3 text-center">
+                <span class="inline-block w-4 h-4 rounded-full 
+                  {% if m.status == 'green' %}bg-green-500
+                  {% elif m.status == 'yellow' %}bg-yellow-400
+                  {% elif m.status == 'red' %}bg-red-500
+                  {% else %}bg-gray-400{% endif %}"></span>                  
+              </td>
+
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Project Summary Modal -->
+<div id="projectSummaryModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50" onclick="closeSummaryModal(event)">
+  <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <div class="flex justify-between items-center p-5 border-b">
+      <h3 class="text-lg font-semibold">SUMMARY OF PROJECTS</h3>
+      <button onclick="closeSummaryModal()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+    </div>
+    <div class="p-5">
+      <div class="grid grid-cols-5 gap-4 text-xs uppercase text-slate-500 font-medium border-b pb-3 mb-4">
+        <div>PROJECT</div>
+        <div>GIP</div>
+        <div>FUNDING SOURCE</div>
+        <div>PROGRESS</div>
+        <div>STATUS</div>
+      </div>
+      <div id="summaryContent" class="space-y-3 text-sm">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================= CHARTS ================= -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const palette = [
+    '#10B981','#FBBF24','#F97316','#2196F3','#8B5CF6',
+    '#EF4444','#4CAF50','#00BCD4','#9C27B0'
+  ];
+
+  /* ---------- FUNDING PIE ---------- */
+  const fundingData = {{ PIE_ONE_JSON|safe }};
+
+  const fundingChart = new Chart(document.getElementById('pieFunding'), {
+    type: 'pie',
+    data: {
+      labels: fundingData.map(d => d.label),
+      datasets: [{
+        data: fundingData.map(d => d.value),
+        backgroundColor: fundingData.map((d,i) => palette[i % palette.length]),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+      tooltip: {
+            callbacks: {
+              label: function(context) {
+                let value = context.raw;
+                return value.toLocaleString() + ' VT' ;
+              }
+            }
+          },
+    
+        legend: {
+          position: 'bottom',
+          labels: { usePointStyle: true, padding: 30 }
+        }
+      }
+    }
+  });
+
+  /* ---------- STATUS PIE ---------- */
+  const statusData = {{ PIE_TWO_JSON|safe }};
+
+  new Chart(document.getElementById('pieStatus'), {
+    type: 'pie',
+    data: {
+      labels: statusData.map(d => d.label),
+      datasets: [{
+        data: statusData.map(d => d.value),
+        backgroundColor: ['#FBBF24','#10B981','#EF4444'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { usePointStyle: true, padding: 30 }
+        }
+      }
+    }
+  });
+
+  /* ================= TOGGLE LOGIC ================= */
+  document.querySelectorAll('.funding-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function () {
+      const label = this.dataset.label;
+      const index = fundingChart.data.labels.indexOf(label);
+      if (index === -1) return;
+
+      const meta = fundingChart.getDatasetMeta(0);
+      meta.data[index].hidden = !this.checked;
+      fundingChart.update();
+    });
+  });
+
+  // ===================== MODAL DATA =====================
+  const ministryProjects = {{ MINISTRY_PROJECTS|safe }};
+  function showProjectSummary(ministry) {
+    const projects = ministryProjects[ministry] || [];
+    const content = document.getElementById('summaryContent');
+    content.innerHTML = projects.length 
+        ? '' 
+        : '<p class="text-center text-slate-500 py-8">No projects found.</p>';
+
+projects.forEach(p => {
+  const div = document.createElement('div');
+  div.className = 'grid grid-cols-5 gap-4 py-3 border-b last:border-0';
+
+  const progress = Number(p.progress_pct) || 0;
+
+  // Progress color
+  let progressColor = 'bg-red-500';
+  if (progress >= 75) progressColor = 'bg-green-500';
+  else if (progress >= 40) progressColor = 'bg-yellow-400';
+
+  // Status dot color (uses backend status)
+  let statusColor = 'bg-gray-400';
+  if (p.status === 'green') statusColor = 'bg-green-500';
+  else if (p.status === 'yellow') statusColor = 'bg-yellow-400';
+  else if (p.status === 'red') statusColor = 'bg-red-500';
+
+  div.innerHTML = `
+    <div class="font-medium">${p.project_title || "Untitled Project"}</div>
+    <div>${p.gip || "No GIP"}</div>
+    <div>${p.funding_source || "Unknown"}</div>
+    <div class="flex items-center gap-2">
+      <div class="flex-1 bg-slate-200 rounded-full h-2">
+        <div class="${progressColor} h-full rounded-full" style="width: ${progress}%"></div>
+      </div>
+      <span class="text-xs">${progress}%</span>
+    </div>
+    <div class="text-center">
+      <span class="inline-block w-4 h-4 rounded-full ${statusColor}"></span>
+    </div>
+  `;
+
+  content.appendChild(div);
+});
+    
+
+    document.getElementById('projectSummaryModal').classList.remove('hidden');
+}
+
+
+  function closeSummaryModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('projectSummaryModal').classList.add('hidden');
+  }
+
+</script>
+
+<!-- PDF Download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+  async function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+
+    // Select the content to include in PDF
+    const content = document.body; // Or a more specific container: document.querySelector('.space-y-6');
+
+    // Use html2canvas to capture as image
+    const canvas = await html2canvas(content, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+
+    // Create PDF
+    const pdf = new jsPDF('p', 'pt', 'a4'); // portrait, points, A4 size
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save('recovery_dashboard.pdf');
+}
+
+</script>
+
+{% endblock %}

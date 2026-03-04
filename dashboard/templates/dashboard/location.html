@@ -1,0 +1,509 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+{% load static %}
+{% block content %}
+
+<style>
+  /* Fullscreen map layout */
+  .map-shell{
+    position: relative;
+    height: 100vh;           /* full viewport */
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #map{
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Floating map controls (top-right) */
+  .map-controls{
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 999; /* above leaflet */
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .map-btn{
+    border: 1px solid rgba(226,232,240,1);
+    background: white;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(15,23,42,.10);
+    transition: transform .08s ease, box-shadow .12s ease;
+    white-space: nowrap;
+  }
+  .map-btn:hover{
+    box-shadow: 0 14px 36px rgba(15,23,42,.14);
+    transform: translateY(-1px);
+  }
+  .map-btn:active{ transform: translateY(0); }
+
+  /* Bottom drawer */
+  .drawer{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: #fff;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    box-shadow: 0 -18px 40px rgba(15,23,42,.15);
+    border-top: 1px solid rgba(226,232,240,1);
+    overflow: hidden;
+
+    /* open/close animation */
+    transform: translateY(calc(100% - var(--drawer-peek)));
+    transition: transform .22s ease;
+    --drawer-peek: 64px; /* visible strip when closed */
+  }
+  .drawer.open{
+    transform: translateY(0);
+  }
+
+  .drawer-header{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(241,245,249,1);
+    background: linear-gradient(#ffffff, #fbfdff);
+  }
+
+  .drawer-handle{
+    width: 44px;
+    height: 5px;
+    border-radius: 99px;
+    background: rgba(148,163,184,.65);
+    margin: 0 auto;
+  }
+
+  .drawer-title{
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgb(100,116,139);
+    font-weight: 700;
+  }
+
+  .drawer-actions{
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .drawer-search{
+    border: 1px solid rgb(203,213,225);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    width: min(460px, 55vw);
+    outline: none;
+  }
+  .drawer-search:focus{
+    border-color: rgba(37,99,235,.55);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+
+  .drawer-body{
+    max-height: 62vh; /* table scroll region */
+    overflow: auto;
+  }
+
+  /* Sticky table header inside drawer */
+  #projectsTable thead th{
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: rgb(248,250,252);
+  }
+
+  /* Selected row highlight */
+  tr.row-selected{
+    background: rgba(37,99,235,.08) !important;
+  }
+</style>
+
+<div class="map-shell">
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Floating controls -->
+  <div class="map-controls">
+    <button id="openTableBtn" class="map-btn">📋 Projects</button>
+    <button id="resetMapBtn" class="map-btn">Reset Map</button>
+  </div>
+
+</div>
+
+<!-- Bottom Drawer: Projects Table -->
+<div id="projectsDrawer" class="drawer" aria-hidden="true">
+  <div class="drawer-header">
+
+    <!-- Handle / quick tap area -->
+    <div style="flex:1" id="drawerHandleTap" title="Open/close">
+      <div class="drawer-handle"></div>
+      <div class="drawer-title mt-2">Recovery Projects</div>
+    </div>
+
+    <input type="text" id="tableSearch" placeholder="Search projects..."
+           class="drawer-search" />
+
+    <div class="drawer-actions">
+      <button id="closeDrawerBtn" class="map-btn">✕</button>
+    </div>
+
+  </div>
+
+  <div class="drawer-body">
+    <div class="overflow-x-auto">
+      <table id="projectsTable" class="w-full text-sm">
+        <thead class="text-slate-600 uppercase text-xs">
+          <tr>
+            <th class="text-left px-4 py-3">PROJECT</th>
+            <th class="text-left px-4 py-3">GIP CODE</th>
+            <th class="text-left px-4 py-3">FUNDING SOURCE</th>
+            <th class="text-left px-4 py-3">APPROVED BUDGET</th>
+            <th class="text-left px-4 py-3">EXPENDITURE</th>
+            <th class="text-left px-4 py-3">REMAINING</th>
+            <th class="text-left px-4 py-3">% SPENT</th>
+            <th class="text-left px-4 py-3">PROGRESS</th>
+            <th class="text-left px-4 py-3">STATUS</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-100">
+          {% for p in PROJECTS %}
+          <tr class="group hover:bg-slate-50 transition-colors relative cursor-pointer"
+              data-area-council="{{ p.area_council|default:'' }}"
+              data-project-id="{{ p.id }}">
+
+            <td class="px-4 py-3 font-medium">
+              {{ p.name|default:"Untitled Project" }}
+              <div style="width: auto;"
+                   class="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-2 bg-gray-800/80 text-white text-xs rounded shadow-lg z-50">
+                {{ p.description|default:'No description available.' }}
+              </div>
+            </td>
+
+            <td class="px-4 py-3 font-medium">{{ p.gip }}</td>
+            <td class="px-4 py-3">{{ p.funder }}</td>
+            <td class="px-4 py-3">VT {{ p.approved|intcomma }}</td>
+            <td class="px-4 py-3">VT {{ p.expenditure|intcomma }}</td>
+            <td class="px-4 py-3">VT {{ p.remaining|intcomma }}</td>
+
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="flex-1 bg-slate-200 rounded-full h-3">
+                  <div class="bg-blue-600 h-full rounded-full" style="width: {{ p.spent_pct }}%"></div>
+                </div>
+                <span class="text-xs font-medium w-12 text-right">{{ p.spent_pct }}%</span>
+              </div>
+            </td>
+
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="flex-1 bg-slate-200 rounded-full h-3">
+                  <div class="bg-green-500 h-full rounded-full" style="width: {{ p.progress_pct }}%"></div>
+                </div>
+                <span class="text-xs font-medium w-12 text-right">{{ p.progress_pct }}%</span>
+              </div>
+            </td>
+
+            <td class="px-4 py-3 text-center">
+              <span class="inline-block w-4 h-4 rounded-full
+                {% if p.status == 'green' %}bg-green-500
+                {% elif p.status == 'yellow' %}bg-yellow-400
+                {% elif p.status == 'red' %}bg-red-500
+                {% else %}bg-gray-400{% endif %}"></span>
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- MarkerCluster CSS + JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // ─────────────────────────────────────────────
+  // Drawer logic
+  // ─────────────────────────────────────────────
+  const drawer = document.getElementById("projectsDrawer");
+  const openTableBtn = document.getElementById("openTableBtn");
+  const closeDrawerBtn = document.getElementById("closeDrawerBtn");
+  const drawerHandleTap = document.getElementById("drawerHandleTap");
+
+  function openDrawer(){
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+    // Leaflet needs a resize check when overlays change
+    setTimeout(() => map.invalidateSize(), 250);
+  }
+
+  function closeDrawer(){
+    drawer.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
+    setTimeout(() => map.invalidateSize(), 250);
+  }
+
+  function toggleDrawer(){
+    drawer.classList.contains("open") ? closeDrawer() : openDrawer();
+  }
+
+  openTableBtn?.addEventListener("click", openDrawer);
+  closeDrawerBtn?.addEventListener("click", closeDrawer);
+  drawerHandleTap?.addEventListener("click", toggleDrawer);
+
+  // Optional: ESC closes drawer
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && drawer.classList.contains("open")){
+      closeDrawer();
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // Map setup
+  // ─────────────────────────────────────────────
+  const map = L.map("map", { scrollWheelZoom: true })
+    .setView([-16.7466, 167.7713], 7);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+
+  const areaCouncilsUrl = "{% static 'dashboard/geo/vanuatu_area_councils.geojson' %}";
+
+  const defaultStyle = {
+    color: "#2563eb",
+    weight: 1.5,
+    fillColor: "#2563eb",
+    fillOpacity: 0.12
+  };
+
+  const selectedStyle = {
+    color: "#1d4ed8",
+    weight: 3,
+    fillColor: "#1d4ed8",
+    fillOpacity: 0.35
+  };
+
+  let areaCouncilsLayer = null;
+  let selectedAreaLayer = null;
+  let areaCouncilsGeoJSON = null;
+
+  const markersCluster = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    spiderfyOnMaxZoom: true,
+    zoomToBoundsOnClick: true
+  }).addTo(map);
+
+  const allMarkers = [];
+  const projects = {{ PROJECTS_JSON|safe }};
+
+  function normalize(s) {
+    return (s || "").toString().trim().toLowerCase();
+  }
+
+  projects.forEach(proj => {
+    if (proj.lat != null && proj.lng != null && !isNaN(proj.lat) && !isNaN(proj.lng)) {
+      const marker = L.marker([proj.lat, proj.lng]);
+
+      marker.bindPopup(`
+        <div class="font-medium">${proj.name || "Untitled Project"}</div>
+        <div class="text-xs mt-1">
+          GIP: ${proj.gip || "No GIP"}<br>
+          AC: ${proj.area_council || "—"}<br>
+          ${proj.funder ? `Funder: ${proj.funder}<br>` : ""}
+          Spent: ${proj.spent_pct}% • Progress: ${proj.progress_pct}%<br>
+          Status: <span style="color:${
+            proj.status === 'green' ? '#22c55e' :
+            proj.status === 'yellow' ? '#eab308' : '#ef4444'
+          }">⬤</span>
+        </div>
+      `);
+
+      marker._projectId = proj.id;
+      marker._areaCouncil = normalize(proj.area_council || "");
+
+      markersCluster.addLayer(marker);
+      allMarkers.push(marker);
+    }
+  });
+
+  function showOnlyAreaCouncil(areaCouncilName) {
+    if (!areaCouncilsGeoJSON) return;
+    const target = normalize(areaCouncilName);
+    if (!target) return;
+
+    if (selectedAreaLayer) {
+      map.removeLayer(selectedAreaLayer);
+      selectedAreaLayer = null;
+    }
+
+    if (areaCouncilsLayer && map.hasLayer(areaCouncilsLayer)) {
+      map.removeLayer(areaCouncilsLayer);
+    }
+
+    const matches = areaCouncilsGeoJSON.features.filter(f => {
+      const name = f.properties?.name || f.properties?.acname || f.properties?.AREA_COUNCIL || "";
+      return normalize(name) === target;
+    });
+
+    if (matches.length > 0) {
+      selectedAreaLayer = L.geoJSON(
+        { type: "FeatureCollection", features: matches },
+        { style: () => selectedStyle }
+      ).addTo(map);
+
+      const label = target.replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+      selectedAreaLayer.bindTooltip(label, { sticky: true });
+
+      map.fitBounds(selectedAreaLayer.getBounds(), { padding: [50, 50] });
+    }
+  }
+
+  function showOnlyProjectMarker(projectId) {
+    if (!projectId) return;
+
+    let targetMarker = null;
+
+    allMarkers.forEach(m => {
+      if (m._projectId === projectId) {
+        if (!markersCluster.hasLayer(m)) markersCluster.addLayer(m);
+        targetMarker = m;
+      } else {
+        markersCluster.removeLayer(m);
+      }
+    });
+
+    if (targetMarker) {
+      map.flyTo(targetMarker.getLatLng(), 13, { animate: true, duration: 0.7 });
+      setTimeout(() => targetMarker.openPopup(), 800);
+    }
+  }
+
+  function resetToAll() {
+    allMarkers.forEach(m => {
+      if (!markersCluster.hasLayer(m)) markersCluster.addLayer(m);
+    });
+
+    if (selectedAreaLayer) {
+      map.removeLayer(selectedAreaLayer);
+      selectedAreaLayer = null;
+    }
+
+    if (areaCouncilsLayer && !map.hasLayer(areaCouncilsLayer)) {
+      areaCouncilsLayer.addTo(map);
+    }
+
+    if (areaCouncilsLayer && areaCouncilsLayer.getBounds().isValid()) {
+      map.fitBounds(areaCouncilsLayer.getBounds(), { padding: [40, 40] });
+    } else {
+      map.setView([-16.7466, 167.7713], 7);
+    }
+
+    const searchInput = document.getElementById("tableSearch");
+    if (searchInput) searchInput.value = "";
+
+    // remove row highlight
+    document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
+  }
+
+  // GeoJSON load
+  fetch(areaCouncilsUrl, { cache: "no-store" })
+    .then(r => {
+      if (!r.ok) throw new Error(`GeoJSON fetch failed: ${r.status}`);
+      return r.text();
+    })
+    .then(text => {
+      const cleaned = text
+        .replace(/\bNaN\b/g, "null")
+        .replace(/\bInfinity\b/g, "null")
+        .replace(/\b-Infinity\b/g, "null");
+      return JSON.parse(cleaned);
+    })
+    .then(geo => {
+      areaCouncilsGeoJSON = geo;
+      areaCouncilsLayer = L.geoJSON(geo, {
+        style: () => defaultStyle,
+        onEachFeature: (feature, layer) => {
+          const label = feature.properties?.name || feature.properties?.acname || "Area Council";
+          layer.bindTooltip(label, { sticky: true });
+        }
+      }).addTo(map);
+
+      if (areaCouncilsLayer.getBounds().isValid()) {
+        map.fitBounds(areaCouncilsLayer.getBounds(), { padding: [40, 40] });
+      }
+    })
+    .catch(err => console.error("Area Councils GeoJSON error:", err));
+
+  // Row click behavior (kept) + auto-close drawer + highlight row
+  const tableEl = document.getElementById("projectsTable");
+  if (tableEl) {
+    tableEl.addEventListener("click", e => {
+      const row = e.target.closest("tbody tr");
+      if (!row) return;
+
+      const areaCouncil = row.dataset.areaCouncil || "";
+      const projectId = parseInt(row.dataset.projectId, 10);
+
+      if (isNaN(projectId)) return;
+
+      // highlight row
+      document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
+      row.classList.add("row-selected");
+
+      showOnlyProjectMarker(projectId);
+      showOnlyAreaCouncil(areaCouncil);
+
+      // ✅ Auto-close the drawer after selection (comment out if you prefer it stays open)
+      closeDrawer();
+    });
+  }
+
+  // Reset triggers
+  document.getElementById("resetMapBtn")?.addEventListener("click", resetToAll);
+  map.on("dblclick", resetToAll);
+
+  // ─────────────────────────────────────────────
+  // Table search (simple client-side)
+  // ─────────────────────────────────────────────
+  const searchInput = document.getElementById("tableSearch");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.toLowerCase().trim();
+      document.querySelectorAll("#projectsTable tbody tr").forEach(tr => {
+        const text = tr.innerText.toLowerCase();
+        tr.style.display = text.includes(q) ? "" : "none";
+      });
+    });
+  }
+
+});
+</script>
+
+{% endblock %}

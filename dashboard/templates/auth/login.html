@@ -1,0 +1,282 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login</title>
+
+  <style>
+    /* ---------- Blue background + white card (matches your Tabulator page feel) ---------- */
+    :root{
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+
+      --line: #e5e7eb;
+      --line2: #eef2f7;
+
+      --brand: #2563eb;
+      --brand2:#1d4ed8;
+
+      --shadow: 0 10px 30px rgba(17,24,39,.08);
+      --radius: 16px;
+
+      --focus: rgba(37,99,235,.15);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background-color:#0e4ca3; /* requested */
+      padding: 18px;
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+
+    .container{
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .card{
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      border: 1px solid rgba(229,231,235,.8);
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .title h1{
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      color: var(--text);
+    }
+
+    .title p{
+      margin: 6px 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    /* Form */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      padding-top: 6px;
+    }
+
+    label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 6px 2px;
+      font-weight: 600;
+    }
+
+    input{
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: box-shadow 120ms ease, border-color 120ms ease;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    input:focus{
+      border-color: rgba(37,99,235,.5);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    /* Error box (toast-like) */
+    .errorbox{
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(220,38,38,0.35);
+      background: rgba(220,38,38,0.08);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* Actions */
+    .actions{
+      display:flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding-top: 16px;
+      margin-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .btn{
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+      transition: box-shadow .12s ease, border-color .12s ease, transform .08s ease;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    .btn:hover{
+      border-color: rgba(37,99,235,.35);
+      box-shadow: 0 6px 18px rgba(37,99,235,.12);
+      transform: translateY(-1px);
+      color: var(--brand2);
+    }
+
+    .btn:active{ transform: translateY(0); }
+
+    .btn:focus{
+      outline: none;
+      box-shadow: 0 0 0 4px var(--focus), 0 6px 18px rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.45);
+    }
+
+    .btn.primary{
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    .btn.primary:hover{
+      background: var(--brand2);
+      border-color: var(--brand2);
+      color: #fff;
+      box-shadow: 0 10px 26px rgba(37,99,235,.18);
+    }
+
+    .hint{
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 520px){
+      body{ padding: 14px; }
+      .card{ padding: 16px; }
+    }
+
+
+/* Logo and Header Placements*/
+.header{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;   /* centers the title block */
+  gap: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+
+/* Pin the logo to the left */
+.logo-wrap{
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+}
+
+.logo-wrap img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Make sure the title is centered */
+.title{
+  text-align: center;
+}    
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="card">
+
+<div class="header">
+  <div class="logo-wrap">
+    <img src="{% static 'images/logo.png' %}" alt="Vanuatu Logo">
+  </div>
+
+  <div class="title">
+    <h1>Recovery Project System</h1>
+    <p>Sign in to enter and manage recovery project records.</p>
+  </div>
+</div>
+
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="grid">
+          <div>
+            <label for="id_username">Username</label>
+            <input type="text" name="username" id="id_username" autocomplete="username" required>
+          </div>
+
+          <div>
+            <label for="id_password">Password</label>
+            <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+          </div>
+        </div>
+
+        {% if form.errors %}
+          <div class="errorbox">
+            Your username and password didn’t match. Please try again.
+          </div>
+        {% endif %}
+
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        <div class="actions">
+          <button type="submit" class="btn primary">Log in</button>
+        </div>
+
+        <div class="hint">
+          If you don’t have an account yet, ask an admin to create one.
+        </div>
+      </form>
+
+    </div>
+  </div>
+</body>
+</html>

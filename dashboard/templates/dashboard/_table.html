@@ -1,0 +1,55 @@
+{% load humanize %}{% load static %}
+<div class="card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600">
+        <tr>
+          <th class="text-left p-3">PROJECT</th>
+          <th class="text-left p-3">GIP CODE</th>
+          <th class="text-left p-3">FUNDING SOURCE</th>
+          <th class="text-left p-3">APPROVED BUDGET</th>
+          <th class="text-left p-3">EXPENDITURE</th>
+          <th class="text-left p-3">REMAINING</th>
+          <th class="text-left p-3">% SPENT</th>
+          <th class="text-left p-3">PROGRESS</th>
+          <th class="text-left p-3">STATUS</th>
+          <th class="text-left p-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in PROJECTS %}
+        <tr class="border-t border-slate-100">
+          <td class="p-3 whitespace-nowrap cursor-pointer" data-project-id="{{ p.id }}" >
+            {{ p.name }}
+            <div class="text-xs text-blue-700 cursor-pointer" data-project-id="{{ p.id }}">{{ p.ministry }}</div>
+           
+          </td>
+          <td class="p-3">{{ p.gip }}</td>
+          <td class="p-3">{{ p.funder }}</td>
+          <td class="p-3">VT {{ p.approved|intcomma }}</td>
+          <td class="p-3">VT {{ p.expenditure|intcomma }}</td>
+          <td class="p-3">VT {{ p.remaining|intcomma }}</td>
+          <td class="p-3 min-w-[160px]">
+            <div class="flex items-center gap-2">
+              <div class="progress-wrap"><div class="progress-bar" style="width: {{ p.spent_pct }}%"></div></div>
+              <span class="text-xs">{{ p.spent_pct }}%</span>
+            </div>
+          </td>
+          <td class="p-3 min-w-[160px]">
+            <div class="flex items-center gap-2">
+              <div class="progress-wrap"><div class="progress-bar" style="width: {{ p.progress_pct }}%"></div></div>
+              <span class="text-xs">{{ p.progress_pct }}%</span>
+            </div>
+          </td>
+          <td class="p-3" style="padding-left: 40px;">
+            <span class="status-dot status-{{ p.status }}"></span>
+          </td>
+          <!--<td class="p-3">
+            <img src="{% static 'images/file.png' %}" alt="Documemt"class="w-20"/>
+          </td>-->
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

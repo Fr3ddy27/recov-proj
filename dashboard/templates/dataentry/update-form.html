@@ -1,0 +1,768 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Project Recovery</title>
+  <!-- Tabulator (CDN) -->
+  <link href="https://unpkg.com/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
+  <style>
+  :root{
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --line2:#eef2f7;
+    --brand:#2563eb;
+    --brand2:#1d4ed8;
+    --shadow: 0 10px 30px rgba(17,24,39,.08);
+    --radius: 16px;
+  }
+  body{
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    background: var(--bg);
+    padding: 18px;
+    color: var(--text);
+  }
+  .card{
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 16px 10px;
+    border: 1px solid rgba(229,231,235,.8);
+  }
+  h2{
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: .2px;
+  }
+  .hint{
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  #grid{
+    margin-top: 12px;
+  }
+  /* ===== Tabulator modern theme overrides ===== */
+  .tabulator{
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+  }
+  /* Header */
+  .tabulator .tabulator-header{
+    background: linear-gradient(#fbfcff, #f6f8fc);
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .tabulator .tabulator-header .tabulator-col{
+    background: transparent;
+    border-right: 1px solid rgba(229,231,235,.8);
+    padding: 10px 8px;
+  }
+  .tabulator .tabulator-header .tabulator-col:last-child{
+    border-right: none;
+  }
+  .tabulator .tabulator-col-title{
+    color: #111827;
+    font-size: 12.5px;
+  }
+  /* Sticky header feel */
+  .tabulator .tabulator-header{
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  /* Rows / cells */
+  .tabulator .tabulator-row{
+    background: #fff;
+    border-bottom: 1px solid var(--line2);
+    min-height: 44px;
+  }
+  .tabulator .tabulator-row:nth-child(even){
+    background: #fcfdff;
+  }
+  .tabulator .tabulator-row:hover{
+    background: #f3f6ff;
+  }
+  .tabulator .tabulator-cell{
+    padding: 10px 10px;
+    border-right: 1px solid rgba(229,231,235,.6);
+    font-size: 13px;
+    color: #111827;
+    vertical-align: middle;
+  }
+  .tabulator .tabulator-cell:last-child{ border-right: none; }
+  /* Active cell / edit focus */
+  .tabulator .tabulator-cell.tabulator-editing{
+    padding: 6px 8px;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 2px rgba(37,99,235,.25);
+    border-radius: 10px;
+  }
+  /* Inputs (editor + header filters) */
+  .tabulator input,
+  .tabulator select,
+  .tabulator textarea{
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  .tabulator input:focus,
+  .tabulator textarea:focus{
+    border-color: rgba(37,99,235,.5);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+  }
+  /* Header filter row spacing */
+  .tabulator .tabulator-header .tabulator-col .tabulator-header-filter{
+    margin-top: 8px;
+  }
+  .tabulator .tabulator-header .tabulator-col .tabulator-header-filter input{
+    width: 100%;
+    background: #fff;
+  }
+  /* Frozen column separator */
+  .tabulator .tabulator-frozen{
+    box-shadow: 10px 0 18px rgba(17,24,39,.06);
+  }
+  /* Pagination footer */
+  .tabulator .tabulator-footer{
+    background: #fff;
+    border-top: 1px solid var(--line);
+    padding: 10px;
+  }
+  .tabulator .tabulator-page{
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 10px;
+    padding: 6px 10px;
+    margin: 0 4px;
+    font-size: 13px;
+    color: #111827;
+  }
+  .tabulator .tabulator-page.active{
+    background: rgba(37,99,235,.10);
+    border-color: rgba(37,99,235,.35);
+    color: var(--brand2);
+  }
+  /* Your cell chrome */
+  .cell-wrap{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .cell-value{
+    overflow:hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+  }
+  .edit-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width: 26px;
+    height: 26px;
+    border-radius: 10px;
+    border: 1px solid rgba(229,231,235,.9);
+    background: #fff;
+    cursor:pointer;
+    opacity: 0;
+    transform: translateY(1px);
+    transition: opacity .12s ease, transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    user-select:none;
+    color: #374151;
+  }
+  .tabulator-row:hover .edit-btn,
+  .tabulator-cell:hover .edit-btn{
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .edit-btn:hover{
+    border-color: rgba(37,99,235,.35);
+    box-shadow: 0 6px 18px rgba(37,99,235,.12);
+    color: var(--brand2);
+  }
+  /* Saving + success */
+  .saving{
+    font-size:12px;
+    color: var(--muted);
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .spinner{
+    width:12px;
+    height:12px;
+    border:2px solid rgba(17,24,39,.15);
+    border-top-color: rgba(37,99,235,.75);
+    border-radius:50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .saved-flash{
+    animation: flash .65s ease;
+  }
+  @keyframes flash{
+    0% { background: rgba(16, 185, 129, .18); }
+    100% { background: transparent; }
+  }
+  /* Optional: make Tabulator’s built-in loading overlay nicer */
+  .tabulator .tabulator-loader{
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(3px);
+  }
+  .tabulator .tabulator-loader-msg{
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #111827;
+  }
+  body{
+    background-color: #0e4ca3;
+  }
+.toolbar{
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+#globalSearch{
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+#globalSearch:focus{
+  border-color: rgba(37,99,235,.5);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+}
+#clearSearch{
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+#clearSearch:hover{
+  border-color: rgba(37,99,235,.35);
+  box-shadow: 0 6px 18px rgba(37,99,235,.12);
+  color: var(--brand2);
+}
+/* Header layout */
+.header{
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+/* Logo sizing */
+.logo-wrap{
+  flex-shrink: 0;
+}
+.logo-wrap img{
+  height: 70px; /* Adjust if needed */
+  width: auto;
+  object-fit: contain;
+}
+/* Text side */
+.header-text{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+/*Header text and Logo*/
+.header-text h2{
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: .2px;
+  color: #111827;
+}
+.header-text .hint{
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+/*Delete button for each row*/
+/* Delete button */
+.del-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width: 30px;
+  height: 30px;
+  border-radius: 12px;
+  border: 1px solid rgba(229,231,235,.9);
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  color: #b91c1c; /* red-ish */
+  opacity: 0;
+  transition: opacity .12s ease, transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  transform: translateY(1px);
+}
+.tabulator-row:hover .del-btn,
+.tabulator-cell:hover .del-btn{
+  opacity: 1;
+  transform: translateY(0);
+}
+.del-btn:hover{
+  border-color: rgba(185,28,28,.35);
+  box-shadow: 0 6px 18px rgba(185,28,28,.12);
+}
+.tabulator .tabulator-header .tabulator-col{
+  background:#a0c3e5;
+}
+.logout-form{
+  margin-left: auto;}
+    /* Buttons */
+    .btn{
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+      transition: box-shadow .12s ease, border-color .12s ease, transform .08s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{
+      border-color: rgba(37,99,235,.35);
+      box-shadow: 0 6px 18px rgba(37,99,235,.12);
+      transform: translateY(-1px);
+      color: var(--brand2);
+    }
+    .btn:active{ transform: translateY(0); }
+    .btn:focus{
+      outline: none;
+      box-shadow: 0 0 0 4px var(--focus), 0 6px 18px rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.45);
+    }
+    .btn.primary{
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+    .btn.primary:hover{
+      background: var(--brand2);
+      border-color: var(--brand2);
+      color: #fff;
+      box-shadow: 0 10px 26px rgba(37,99,235,.18);
+    }
+    /* Expand button */
+    .expand-btn{
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 0;
+    }
+    .tabulator-row:hover .expand-btn{
+      color: var(--brand);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+<div class="header">
+  <div class="logo-wrap">
+    <img src="{% static 'images/logo.png' %}" alt="Vanuatu Logo">
+  </div>
+  <div class="header-text">
+    <h2>Recovery Projects | Data Update</h2>
+    <div class="hint">Click the pencil to edit. Changes auto-save.</div>
+  </div>
+  <form method="post" action="{% url 'overview' %}" class="logout-form">
+    {% csrf_token %}
+    <button type="submit" class="btn">⬅️ Back to Dashboard</button>
+  </form>
+</div>
+    <div class="toolbar">
+    <input id="globalSearch" type="search" placeholder="Search all columns…" />
+    <button id="clearSearch" type="button">Clear</button>
+    </div>
+    <div id="grid"></div>
+  </div>
+<script>
+  function getCookie(name) {
+    const v = `; ${document.cookie}`;
+    const parts = v.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+  }
+  const csrftoken = getCookie("csrftoken");
+  // helper: render value + edit icon
+  function editableCellFormatter(cell){
+    const value = cell.getValue();
+    const safe = (value === null || value === undefined || value === "") ? "<span style='color:#889'>—</span>" : String(value);
+    return `
+      <div class="cell-wrap">
+        <div class="cell-value">${safe}</div>
+        <button type="button" class="edit-btn" title="Edit" aria-label="Edit">✎</button>
+      </div>
+    `;
+  }
+// Render delete button
+function deleteButtonFormatter(){
+  return `
+    <button type="button" class="del-btn" title="Delete row" aria-label="Delete row">🗑</button>
+  `;
+}
+// Render expand button
+function expandButtonFormatter(cell){
+  return `<button type="button" class="expand-btn" title="Expand/Collapse" aria-label="Expand/Collapse">▶</button>`;
+}
+  const table = new Tabulator("#grid", {
+    height: "70vh",
+    layout: "fitDataStretch",
+    placeholder: "No projects found",
+    ajaxLoader: true,
+    ajaxLoaderLoading: "Loading projects…",
+    ajaxLoaderError: "Could not load data.",
+    // ✅ server-side pagination
+    pagination: true,
+    paginationMode: "remote",
+    paginationSize: 50,
+    paginationSizeSelector: [25, 50, 100, 200],
+    ajaxURL: "{% url 'recovery_projects_api_list' %}",
+    ajaxConfig: "GET",
+    // Tell Tabulator where to find data + last page in our JSON
+    ajaxResponse: function(url, params, response){
+      // response = { data: [...], last_page: N }
+      return response; // keep it intact
+    },
+    // nice UX
+    movableColumns: true,
+    headerFilterLiveFilterDelay: 300,
+    editTriggerEvent: "none", // ✅ IMPORTANT
+columns: [
+  {title:"", field:"_expand", width:40, hozAlign:"center", headerSort:false, formatter: expandButtonFormatter, frozen:true},
+  {title:"ID", field:"id", width:80, frozen:true},
+ 
+  // ✅ Delete column
+  {title:"⛔", field:"_delete", width:60, hozAlign:"center", headerSort:false, formatter: deleteButtonFormatter, frozen:true},
+  {title:"Sector", field:"sector", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Program", field:"program", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Project Title", field:"project_title", editor:"input", headerFilter:"input", width:280, formatter: editableCellFormatter},
+  {title:"Description", field:"project_description", editor:"input", headerFilter:"input", width:320, formatter: editableCellFormatter},
+  {title:"Funding Status", field:"funding_status", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Funding Agency", field:"funding_agency", editor:"input", headerFilter:"input", width:220, formatter: editableCellFormatter},
+  {title:"Implementing Agency", field:"implementing_agency", editor:"input", headerFilter:"input", width:220, formatter: editableCellFormatter},
+  {title:"GIP", field:"gip", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+// {title:"GIP Attachment", field:"gip_attachment", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Tender Board Link", field:"central_tender_board_link", editor:"input", headerFilter:"input", width:260, formatter: editableCellFormatter},
+  {title:"Funding (USD)", field:"project_total_funding_us", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Funding (Vatu)", field:"project_total_funding_vt", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Expenditure", field:"project_expenditure", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Start Date", field:"start_date", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Completion Date", field:"completion_date", editor:"input", headerFilter:"input", formatter: editableCellFormatter},
+  {title:"Disaster Type", field:"type_of_disaster_operation", editor:"input", headerFilter:"input", width:220, formatter: editableCellFormatter},
+  {title:"Key Risks", field:"key_risks_to_implementation", editor:"input", headerFilter:"input", width:260, formatter: editableCellFormatter},
+],
+  });
+  // ✅ Only start editing when clicking the pencil icon
+table.on("cellClick", async function(e, cell){
+  // Edit pencil click
+  const editBtn = e.target.closest(".edit-btn");
+  if(editBtn){
+    cell.edit();
+    return;
+  }
+  // Delete trash click
+  const delBtn = e.target.closest(".del-btn");
+  if(delBtn){
+    const row = cell.getRow();
+    const data = row.getData();
+    const label = data.project_title ? `“${data.project_title}”` : `ID ${data.id}`;
+    if(!confirm(`Delete ${label}? This cannot be undone.`)) return;
+    try{
+      const res = await fetch(`/api/recovery-projects/${data.id}/`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRFToken": csrftoken,
+        },
+      });
+      if(!res.ok){
+        const msg = await res.text();
+        alert("Delete failed: " + msg);
+        return;
+      }
+      row.delete(); // remove row from table UI
+      // Also remove detail row if exists
+      const detailRow = table.getRows().find(r => r.getData()._detail_for === data.id);
+      if(detailRow) detailRow.delete();
+    }catch(err){
+      alert("Delete failed (network error).");
+    }
+  }
+  // Expand button click
+  const expandBtn = e.target.closest(".expand-btn");
+  if(expandBtn){
+    toggleExpand(cell.getRow());
+  }
+});
+  // ✅ saving animation inside the cell while PATCH runs
+  table.on("cellEdited", async function(cell){
+    const row = cell.getRow().getData();
+    const field = cell.getField();
+    const value = cell.getValue();
+    // Show saving spinner in-cell (without breaking the value)
+    const cellEl = cell.getElement();
+    const valueEl = cellEl.querySelector(".cell-value");
+    const oldHTML = valueEl ? valueEl.innerHTML : null;
+    if(valueEl){
+      valueEl.innerHTML = `<span class="saving"><span class="spinner"></span>Saving…</span>`;
+    }
+    try{
+      const res = await fetch(`/api/recovery-projects/${row.id}/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken,
+        },
+        body: JSON.stringify({field, value}),
+      });
+      if(!res.ok){
+        const msg = await res.text();
+        // revert value
+        cell.restoreOldValue();
+        alert("Save failed: " + msg);
+        return;
+      }
+      const data = await res.json();
+      // set server-normalized value (won't re-trigger cellEdited when mutate=true)
+      cell.setValue(data.value, true);
+      // flash success
+      cellEl.classList.add("saved-flash");
+      setTimeout(()=>cellEl.classList.remove("saved-flash"), 650);
+    }catch(err){
+      cell.restoreOldValue();
+      alert("Save failed (network error).");
+    }finally{
+      // restore display (Tabulator will re-render formatter after setValue/restoreOldValue)
+      // If it didn't, fall back:
+      if(valueEl && oldHTML !== null && valueEl.innerHTML.includes("Saving")){
+        valueEl.innerHTML = oldHTML;
+      }
+    }
+  });
+
+// Toggle expand function
+async function toggleExpand(row) {
+  const data = row.getData();
+  const projectId = data.id;
+  let detailRow = table.getRows().find(r => r.getData() && r.getData()._detail_for === projectId);
+  if (detailRow) {
+    // Close
+    const parentExpandBtn = row.getCell("_expand").getElement().querySelector(".expand-btn");
+    parentExpandBtn.innerText = "▶";
+    detailRow.delete();
+    return;
+  }
+  // Open: Fetch child data
+  let locData, indData;
+  try {
+    const locRes = await fetch(`/api/project-locations/list/${projectId}/`);
+    locData = await locRes.json();
+    const indRes = await fetch(`/api/project-status-indicators/list/${projectId}/`);
+    indData = await indRes.json();
+  } catch (err) {
+    alert("Failed to load child data.");
+    return;
+  }
+  // Add detail row below
+  const position = row.getPosition(true) + 1;
+  const detailData = { _is_detail: true, _detail_for: projectId };
+  const newRow = await table.addRow(detailData, true, row);
+  // Customize the detail row element
+  const rowEl = newRow.getElement();
+  rowEl.innerHTML = "";
+  const detailCell = document.createElement("div");
+  detailCell.style.padding = "16px";
+  detailCell.style.background = "#f9fafb";
+  detailCell.style.borderTop = "1px solid var(--line)";
+  detailCell.innerHTML = `
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 400px;">
+        <h3 style="font-size: 16px; margin-bottom: 8px;">Project Locations</h3>
+        <div id="locations-grid-${projectId}" style="height: 200px;"></div>
+        <button type="button" class="btn add-child" data-type="loc" style="margin-top: 8px;">+ Add Location</button>
+      </div>
+      <div style="flex: 1; min-width: 400px;">
+        <h3 style="font-size: 16px; margin-bottom: 8px;">Project Status Indicators</h3>
+        <div id="indicators-grid-${projectId}" style="height: 200px;"></div>
+        <button type="button" class="btn add-child" data-type="ind" style="margin-top: 8px;">+ Add Indicator</button>
+      </div>
+    </div>
+  `;
+  rowEl.appendChild(detailCell);
+  // Create sub-tables
+  const locTable = new Tabulator(`#locations-grid-${projectId}`, {
+    height: "100%",
+    layout: "fitDataStretch",
+    data: locData.data,
+    placeholder: "No locations",
+    columns: [
+      {title:"ID", field:"id", width:80},
+      {title:"⛔", field:"_delete", width:60, hozAlign:"center", headerSort:false, formatter: deleteButtonFormatter},
+      {title:"Province", field:"province", editor:"input", formatter: editableCellFormatter},
+      {title:"Island", field:"island", editor:"input", formatter: editableCellFormatter},
+      {title:"Area Council", field:"area_council", editor:"input", formatter: editableCellFormatter},
+      {title:"Project Site", field:"project_site", editor:"input", formatter: editableCellFormatter},
+      {title:"Longitude", field:"gps_longtitude", editor:"input", formatter: editableCellFormatter},
+      {title:"Latitude", field:"gps_latitude", editor:"input", formatter: editableCellFormatter},
+    ],
+  });
+  const indTable = new Tabulator(`#indicators-grid-${projectId}`, {
+    height: "100%",
+    layout: "fitDataStretch",
+    data: indData.data,
+    placeholder: "No indicators",
+    columns: [
+      {title:"ID", field:"id", width:80},
+      {title:"⛔", field:"_delete", width:60, hozAlign:"center", headerSort:false, formatter: deleteButtonFormatter},
+      {title:"Status Indicator", field:"status_indicator", editor:"input", formatter: editableCellFormatter},
+      {title:"Description", field:"description", editor:"input", formatter: editableCellFormatter, widthGrow:2},
+    ],
+  });
+  // Add event listeners for sub-tables
+  addChildTableListeners(locTable, "/api/project-locations/");
+  addChildTableListeners(indTable, "/api/project-status-indicators/");
+  // Add buttons listeners
+  const addBtns = detailCell.querySelectorAll(".add-child");
+  addBtns.forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const type = btn.dataset.type;
+      const api = type === "loc" ? "/api/project-locations/create/" : "/api/project-status-indicators/create/";
+      const subTable = type === "loc" ? locTable : indTable;
+      try {
+        const res = await fetch(`${api}${projectId}/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken,
+          },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error("Create failed");
+        const newData = await res.json();
+        subTable.addRow(newData);
+      } catch (err) {
+        alert("Failed to add new row.");
+      }
+    });
+  });
+  // Change expand button to ▼
+  const expandBtnEl = row.getCell("_expand").getElement().querySelector(".expand-btn");
+  expandBtnEl.innerText = "◀";
+}
+
+// Function to add listeners to child tables
+function addChildTableListeners(subTable, apiPrefix) {
+  subTable.on("cellClick", async (e, cell) => {
+    const editBtn = e.target.closest(".edit-btn");
+    if (editBtn) {
+      cell.edit();
+      return;
+    }
+    const delBtn = e.target.closest(".del-btn");
+    if (delBtn) {
+      const row = cell.getRow();
+      const data = row.getData();
+      if (!confirm("Delete this row?")) return;
+      try {
+        const res = await fetch(`${apiPrefix}${data.id}/`, {
+          method: "DELETE",
+          headers: { "X-CSRFToken": csrftoken },
+        });
+        if (!res.ok) throw new Error("Delete failed");
+        row.delete();
+      } catch (err) {
+        alert("Delete failed.");
+      }
+    }
+  });
+  subTable.on("cellEdited", async (cell) => {
+    const rowData = cell.getRow().getData();
+    const field = cell.getField();
+    const value = cell.getValue();
+    const cellEl = cell.getElement();
+    const valueEl = cellEl.querySelector(".cell-value");
+    const oldHTML = valueEl ? valueEl.innerHTML : null;
+    if (valueEl) valueEl.innerHTML = `<span class="saving"><span class="spinner"></span>Saving…</span>`;
+    try {
+      const res = await fetch(`${apiPrefix}${rowData.id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+        body: JSON.stringify({ field, value }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      const data = await res.json();
+      cell.setValue(data.value, true);
+      cellEl.classList.add("saved-flash");
+      setTimeout(() => cellEl.classList.remove("saved-flash"), 650);
+    } catch (err) {
+      cell.restoreOldValue();
+      alert("Save failed.");
+    } finally {
+      if (valueEl && oldHTML && valueEl.innerHTML.includes("Saving")) valueEl.innerHTML = oldHTML;
+    }
+  });
+}
+</script>
+<script>
+  // ... your existing code that creates `table` ...
+  const globalSearchEl = document.getElementById("globalSearch");
+  const clearSearchEl = document.getElementById("clearSearch");
+  // Filter any field (client-side)
+  function globalFilter(data, filterParams){
+    const q = (filterParams.value || "").toString().toLowerCase().trim();
+    if(!q) return true;
+    // Only search through actual column fields (avoids searching internal keys)
+    const fields = table.getColumns()
+      .map(c => c.getField())
+      .filter(Boolean);
+    return fields.some(f => {
+      const v = data[f];
+      if(v === null || v === undefined) return false;
+      return String(v).toLowerCase().includes(q);
+    });
+  }
+  function applyGlobalSearch(value){
+    const q = (value || "").trim();
+    if(!q){
+      table.clearFilter(true); // clear all filters (incl header filters)
+      // If you want to keep header filters, use: table.clearFilter(false);
+      return;
+    }
+    table.setFilter(globalFilter, { value: q });
+  }
+  globalSearchEl.addEventListener("input", (e) => {
+    applyGlobalSearch(e.target.value);
+  });
+  clearSearchEl.addEventListener("click", () => {
+    globalSearchEl.value = "";
+    applyGlobalSearch("");
+    globalSearchEl.focus();
+  });
+</script>
+</body>
+</html>

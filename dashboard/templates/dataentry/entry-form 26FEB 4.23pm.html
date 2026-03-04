@@ -1,0 +1,966 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>New Recovery Project</title>
+
+  <style>
+    :root{
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+
+      --line: #e5e7eb;
+      --line2: #eef2f7;
+
+      --brand: #2563eb;
+      --brand2:#1d4ed8;
+
+      --shadow: 0 10px 30px rgba(17,24,39,.08);
+      --radius: 16px;
+
+      --focus: rgba(37,99,235,.15);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background-color:#0e4ca3;
+      padding: 18px;
+      color: var(--text);
+    }
+
+    .container{ max-width: 1100px; margin: 0 auto; }
+
+    .card{
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px 18px 0;
+      border: 1px solid rgba(229,231,235,.8);
+      overflow: hidden;
+    }
+
+    .header{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .header-left{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .logo-wrap{ flex-shrink: 0; }
+    .logo-wrap img{ height: 70px; width: auto; object-fit: contain; }
+
+    .header-text{
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .header-text h2{
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: .2px;
+      color: #111827;
+    }
+
+    .header-text .hint{
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .logout-form{ margin-left: auto; }
+
+    /* Toasts */
+    .toast{
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 6px 16px rgba(17,24,39,.06);
+      color: var(--text);
+      margin: 0 0 12px 0;
+    }
+    .toast-success{ border-color: rgba(22,163,74,0.35); background: rgba(22,163,74,0.08); }
+    .toast-error{ border-color: rgba(220,38,38,0.35); background: rgba(220,38,38,0.08); }
+
+    /* Buttons */
+    .btn{
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+      transition: box-shadow .12s ease, border-color .12s ease, transform .08s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{
+      border-color: rgba(37,99,235,.35);
+      box-shadow: 0 6px 18px rgba(37,99,235,.12);
+      transform: translateY(-1px);
+      color: var(--brand2);
+    }
+    .btn:active{ transform: translateY(0); }
+    .btn:focus{
+      outline: none;
+      box-shadow: 0 0 0 4px var(--focus), 0 6px 18px rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.45);
+    }
+    .btn.primary{
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+    .btn.primary:hover{
+      background: var(--brand2);
+      border-color: var(--brand2);
+      color: #fff;
+      box-shadow: 0 10px 26px rgba(37,99,235,.18);
+    }
+
+    /* Wizard */
+    .wizard-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 14px 0 16px;
+      border-top: 1px solid var(--line2);
+      border-bottom: 1px solid var(--line);
+      margin-top: 14px;
+    }
+
+    .steps{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+    }
+
+    .step-pill{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      user-select: none;
+    }
+
+    .step-pill .num{
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display:grid;
+      place-items:center;
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      background:#fff;
+    }
+
+    .step-pill.active{
+      border-color: rgba(37,99,235,.35);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    .step-pill.done{ border-color: rgba(22,163,74,0.30); }
+    .step-pill.done .num{
+      border-color: rgba(22,163,74,0.30);
+      color: #16a34a;
+    }
+
+    .progress{
+      flex: 1;
+      height: 10px;
+      border-radius: 999px;
+      background: #eef2f7;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      max-width: 320px;
+    }
+
+    .progress > div{
+      height: 100%;
+      width: 0%;
+      background: var(--brand);
+      transition: width 180ms ease;
+    }
+
+    /* Form fields */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 16px;
+      padding: 18px 0 6px;
+    }
+    .full{ grid-column: 1 / -1; }
+
+    label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 6px 2px;
+      font-weight: 600;
+    }
+
+    input, select, textarea{
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: box-shadow 120ms ease, border-color 120ms ease;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    input:focus, select:focus, textarea:focus{
+      border-color: rgba(37,99,235,.5);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    textarea{ resize: vertical; }
+
+    .smallmuted{
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .compact-row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    #gpsMap{
+      height: 360px;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      background: #fff;
+      margin-top: 10px;
+    }
+
+    .wizard-actions{
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 16px 0 18px;
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+      background: #fff;
+    }
+
+    @media (max-width: 900px){
+      body{ padding: 14px; }
+      .card{ padding: 16px 16px 0; }
+      .grid{ grid-template-columns: 1fr; }
+      .compact-row{ grid-template-columns: 1fr; }
+      .progress{ max-width: 220px; }
+      .wizard-actions{ flex-wrap: wrap; }
+    }
+
+    /* ---- Locations formset UI ---- */
+    .locations-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 0 0;
+    }
+
+    .location-row{
+      border:1px solid #e5e7eb;
+      padding:12px;
+      border-radius:14px;
+      margin: 10px 0;
+      background:#fff;
+      transition: box-shadow .12s ease, border-color .12s ease;
+      cursor: pointer;
+    }
+    .location-row:hover{
+      border-color: rgba(37,99,235,.25);
+      box-shadow: 0 6px 16px rgba(17,24,39,.06);
+    }
+    .location-row.active{
+      border-color: rgba(37,99,235,.45);
+      box-shadow: 0 0 0 4px var(--focus), 0 10px 26px rgba(37,99,235,.10);
+    }
+
+    .row-actions{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .mini{
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 12px;
+    }
+/* Wizard step panels */
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+
+
+  </style>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="card">
+
+      <div class="header">
+        <div class="header-left">
+          <div class="logo-wrap">
+            <img src="{% static 'images/logo.png' %}" alt="Vanuatu Logo">
+          </div>
+
+          <div class="header-text">
+            <h2>Recovery Projects | Data Entry</h2>
+            <div class="hint">Fill in the details below.</div>
+          </div>
+        </div>
+
+        <form method="post" action="{% url 'overview' %}" class="logout-form">
+          {% csrf_token %}
+          <button type="submit" class="btn">⬅️ Back to Dashboard</button>
+        </form>
+      </div>
+
+      <!-- Django messages -->
+      {% if messages %}
+        <div>
+          {% for message in messages %}
+            <div class="toast toast-{{ message.tags }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Wizard header -->
+      <div class="wizard-top">
+        <div class="steps">
+          <div class="step-pill active" data-step-pill="1"><span class="num">1</span> Project Info</div>
+          <div class="step-pill" data-step-pill="2"><span class="num">2</span> Funding &amp; Dates</div>
+          <div class="step-pill" data-step-pill="3"><span class="num">3</span> Locations &amp; Risks</div>
+        </div>
+
+        <div class="progress" aria-label="progress">
+          <div id="progressBar"></div>
+        </div>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" novalidate id="wizardForm">
+        {% csrf_token %}
+    
+
+
+        <!-- STEP 1 -->
+        <div class="step-panel active" data-step="1">
+          <div class="grid">
+
+            <div>
+              <label for="{{ form.sector.id_for_label }}">Sector</label>
+              {{ form.sector }}
+            </div>
+
+            <div>
+              <label for="{{ form.program.id_for_label }}">Program</label>
+              {{ form.program }}
+            </div>
+
+            <div class="full">
+              <label for="{{ form.project_title.id_for_label }}">Project title</label>
+              {{ form.project_title }}
+            </div>
+
+            <div class="full">
+              <label for="{{ form.project_description.id_for_label }}">Project description</label>
+              {{ form.project_description }}
+            </div>
+
+            <div class="full">
+              <label>Status indicators</label>
+              <div style="display:flex; flex-wrap:wrap; gap: 16px 20px; margin-top: 8px;">
+                <div>{{ form.status_indicator1 }}</div>
+                <div>{{ form.status_indicator2 }}</div>
+                <div>{{ form.status_indicator3 }}</div>
+                <div>{{ form.status_indicator4 }}</div>
+                <div>{{ form.status_indicator5 }}</div>
+              </div>
+            </div>
+
+            <div class="full smallmuted">
+              Step 1 of 3 — add the basic project details.
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step-panel" data-step="2">
+          <div class="grid">
+
+            <div>
+              <label for="{{ form.funding_status.id_for_label }}">Funding status</label>
+              {{ form.funding_status }}
+            </div>
+
+            <div class="compact-row full">
+              <div>
+                <label for="{{ form.gip.id_for_label }}">GIP</label>
+                {{ form.gip }}
+              </div>
+              <div>
+                <label for="{{ form.gip_attachment.id_for_label }}">Upload GIP Attachment</label>
+                {{ form.gip_attachment }}
+              </div>
+            </div>
+
+            <div class="full">
+              <label for="{{ form.central_tender_board_link.id_for_label }}">Central Tender Board link</label>
+              {{ form.central_tender_board_link }}
+            </div>
+
+            <div>
+              <label for="{{ form.funding_agency.id_for_label }}">Funding agency</label>
+              {{ form.funding_agency }}
+            </div>
+
+            <div>
+              <label for="{{ form.implementing_agency.id_for_label }}">Implementing agency</label>
+              {{ form.implementing_agency }}
+            </div>
+
+            <div>
+              <label for="{{ form.project_total_funding_us.id_for_label }}">Total funding (USD)</label>
+              {{ form.project_total_funding_us }}
+            </div>
+
+            <div>
+              <label for="{{ form.project_total_funding_vt.id_for_label }}">Total funding (Vatu)</label>
+              {{ form.project_total_funding_vt }}
+            </div>
+
+            <div>
+              <label for="{{ form.project_expenditure.id_for_label }}">Project expenditure</label>
+              {{ form.project_expenditure }}
+            </div>
+
+            <div>
+              <label for="{{ form.start_date.id_for_label }}">Start date</label>
+              {{ form.start_date }}
+            </div>
+
+            <div>
+              <label for="{{ form.completion_date.id_for_label }}">Completion date</label>
+              {{ form.completion_date }}
+            </div>
+
+            <div class="full smallmuted">
+              Step 2 of 3 — funding information and key dates.
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step-panel" data-step="3">
+          <div class="grid">
+
+            <div class="full">
+              <label for="{{ form.type_of_disaster_operation.id_for_label }}">Type of disaster operation</label>
+              {{ form.type_of_disaster_operation }}
+            </div>
+
+            <div class="full">
+              <label for="{{ form.key_risks_to_implementation.id_for_label }}">Key risks to implementation</label>
+              {{ form.key_risks_to_implementation }}
+            </div>
+
+            <div class="full">
+              <div class="locations-head">
+                <h2 style="margin:0; font-size:16px;">Locations</h2>
+                <button type="button" class="btn mini" id="addLocation">+ Add another location</button>
+              </div>
+
+              <div class="smallmuted" style="margin: 6px 0 10px 2px;">
+                Tip: Click a location row to make it <b>active</b>. The map will fill coordinates for the active row.
+              </div>
+
+              {{ location_formset.management_form }}
+
+              <div id="locationRows">
+                {% for lf in location_formset %}
+                  <div class="location-row" data-form-index="{{ forloop.counter0 }}">
+                    <div class="grid" style="padding:0;">
+                      <div>
+                        <label>Province</label>
+                        <select name="{{ lf.prefix }}-province" id="id_{{ lf.prefix }}-province" data-role="province">
+                          <option value="">Select province...</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label>Island</label>
+                        <select name="{{ lf.prefix }}-island" id="id_{{ lf.prefix }}-island" data-role="island">
+                          <option value="">Select island...</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label>Area council</label>
+                        <select name="{{ lf.prefix }}-area_council" id="id_{{ lf.prefix }}-area_council" data-role="area">
+                          <option value="">Select area council...</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label>Project site</label>
+                        {{ lf.project_site }}
+                      </div>
+
+                      <div>
+                        <label>GPS Latitude</label>
+                        {{ lf.gps_latitude }}
+                      </div>
+
+                      <div>
+                        <label>GPS Longitude</label>
+                        {{ lf.gps_longtitude }}
+                      </div>
+
+                      <div class="full row-actions">
+                        <span class="smallmuted">Delete this location</span>
+                        {{ lf.DELETE }}
+                        {{ lf.id }}
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+
+              <!-- empty form template (for JS add) -->
+              <template id="emptyLocationTemplate">
+                <div class="location-row" data-form-index="__prefix__">
+                  <div class="grid" style="padding:0;">
+                    <div>
+                      <label>Province</label>
+                      <select name="form-__prefix__-province" id="id_form-__prefix__-province" data-role="province">
+                        <option value="">Select province...</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label>Island</label>
+                      <select name="form-__prefix__-island" id="id_form-__prefix__-island" data-role="island">
+                        <option value="">Select island...</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label>Area council</label>
+                      <select name="form-__prefix__-area_council" id="id_form-__prefix__-area_council" data-role="area">
+                        <option value="">Select area council...</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label>Project site</label>
+                      {{ location_formset.empty_form.project_site }}
+                    </div>
+
+                    <div>
+                      <label>GPS Latitude</label>
+                      {{ location_formset.empty_form.gps_latitude }}
+                    </div>
+
+                    <div>
+                      <label>GPS Longitude</label>
+                      {{ location_formset.empty_form.gps_longtitude }}
+                    </div>
+
+                    <div class="full row-actions">
+                      <span class="smallmuted">Delete this location</span>
+                      {{ location_formset.empty_form.DELETE }}
+                      {{ location_formset.empty_form.id }}
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <h2 style="margin:14px 0 10px 0; font-size:16px;">GPS Map</h2>
+              <div class="smallmuted" style="margin: 0 0 8px 2px;">
+                Click the map to drop a pin and auto-fill Latitude/Longitude for the <b>active</b> location row.
+              </div>
+              <div id="gpsMap"></div>
+            </div>
+
+            <div class="full smallmuted">
+              Step 3 of 3 — add locations & risks, then submit.
+            </div>
+          </div>
+        </div>
+
+        <!-- Wizard buttons -->
+        <div class="wizard-actions">
+          <button type="button" class="btn" id="btnPrev">← Back</button>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn" id="btnNext">Next →</button>
+            <button type="submit" class="btn primary" id="btnSubmit" style="display:none;">Save project</button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+
+  <script>
+    // ---------- Wizard Steps ----------
+    (function () {
+      const panels = Array.from(document.querySelectorAll(".step-panel"));
+      const pills = Array.from(document.querySelectorAll(".step-pill"));
+      const progress = document.getElementById("progressBar");
+
+      const btnPrev = document.getElementById("btnPrev");
+      const btnNext = document.getElementById("btnNext");
+      const btnSubmit = document.getElementById("btnSubmit");
+
+      let step = 1;
+      const maxStep = 3;
+
+      function setProgress() {
+        progress.style.width = ((step - 1) / (maxStep - 1)) * 100 + "%";
+      }
+
+      function showStep(n) {
+        step = n;
+
+        panels.forEach(p => p.classList.toggle("active", Number(p.dataset.step) === step));
+
+        pills.forEach(p => {
+          const pStep = Number(p.dataset.stepPill);
+          p.classList.toggle("active", pStep === step);
+          p.classList.toggle("done", pStep < step);
+        });
+
+        btnPrev.style.visibility = step === 1 ? "hidden" : "visible";
+        btnNext.style.display = step === maxStep ? "none" : "inline-block";
+        btnSubmit.style.display = step === maxStep ? "inline-block" : "none";
+
+        setProgress();
+
+        // Leaflet needs an invalidateSize if map was hidden.
+        if (step === 3 && window.__gpsMap) {
+          setTimeout(() => window.__gpsMap.invalidateSize(), 250);
+        }
+      }
+
+      function validateStep(currentStep) {
+        const panel = panels.find(p => Number(p.dataset.step) === currentStep);
+        const required = panel.querySelectorAll("input[required], select[required], textarea[required]");
+
+        for (const el of required) {
+          if (!el.value || el.value.trim() === "") {
+            el.focus();
+            return false;
+          }
+        }
+        return true;
+      }
+
+      btnPrev.addEventListener("click", () => showStep(Math.max(1, step - 1)));
+
+      btnNext.addEventListener("click", () => {
+        if (!validateStep(step)) return;
+        showStep(Math.min(maxStep, step + 1));
+      });
+
+      pills.forEach(pill => {
+        pill.addEventListener("click", () => {
+          const target = Number(pill.dataset.stepPill);
+          if (target <= step) showStep(target);
+        });
+      });
+
+      setProgress();
+      showStep(1);
+    })();
+  </script>
+
+  <script>
+    // ---------- Locations: Province -> Island -> Area council (per formset row) ----------
+    document.addEventListener("DOMContentLoaded", function () {
+      let allData = [];
+
+      function uniqSorted(arr){
+        return [...new Set(arr.filter(Boolean))].sort();
+      }
+
+      function setSelectOptions(select, options, selectedValue){
+        select.innerHTML = `<option value="">${select.dataset.placeholder || "Select..."}</option>`;
+        options.forEach(v => {
+          const opt = new Option(v, v);
+          if (selectedValue && v === selectedValue) opt.selected = true;
+          select.add(opt);
+        });
+      }
+
+      function initRow(rowEl){
+        const provSel = rowEl.querySelector('[data-role="province"]');
+        const islSel  = rowEl.querySelector('[data-role="island"]');
+        const areaSel = rowEl.querySelector('[data-role="area"]');
+
+        if (!provSel || !islSel || !areaSel) return;
+
+        provSel.dataset.placeholder = "Select province...";
+        islSel.dataset.placeholder  = "Select island...";
+        areaSel.dataset.placeholder = "Select area council...";
+
+        const existingProvince = provSel.getAttribute("data-existing") || "";
+        const existingIsland   = islSel.getAttribute("data-existing") || "";
+        const existingArea     = areaSel.getAttribute("data-existing") || "";
+
+        // Build provinces
+        const provinces = uniqSorted(allData.map(r => (r.province || "").trim()));
+        setSelectOptions(provSel, provinces, existingProvince);
+
+        // When province changes -> islands
+        provSel.addEventListener("change", () => {
+          const p = provSel.value;
+          setSelectOptions(islSel, [], "");
+          setSelectOptions(areaSel, [], "");
+
+          if (!p) return;
+
+          const islands = uniqSorted(
+            allData
+              .filter(r => (r.province || "").trim() === p)
+              .map(r => (r.island || "").trim())
+          );
+
+          setSelectOptions(islSel, islands, existingIsland);
+          if (existingIsland && islands.includes(existingIsland)) {
+            islSel.dispatchEvent(new Event("change"));
+          }
+        });
+
+        // Island changes -> councils
+        islSel.addEventListener("change", () => {
+          const p = provSel.value;
+          const i = islSel.value;
+          setSelectOptions(areaSel, [], "");
+
+          if (!p || !i) return;
+
+          const councils = uniqSorted(
+            allData
+              .filter(r => (r.province || "").trim() === p && (r.island || "").trim() === i)
+              .map(r => (r.area_council || "").trim())
+          );
+
+          setSelectOptions(areaSel, councils, existingArea);
+        });
+
+        // Trigger initial cascade if existing values were set server-side
+        if (existingProvince) {
+          provSel.value = existingProvince;
+          provSel.dispatchEvent(new Event("change"));
+        }
+      }
+
+      // Load area councils dataset once
+      fetch("{% url 'area_councils_json' %}")
+        .then(r => {
+          if (!r.ok) throw new Error("Cannot load area councils");
+          return r.json();
+        })
+        .then(data => {
+          allData = data || [];
+          document.querySelectorAll(".location-row").forEach(initRow);
+        })
+        .catch(err => {
+          console.error(err);
+        });
+
+      // Add new location row
+      const addBtn = document.getElementById("addLocation");
+      const rowsWrap = document.getElementById("locationRows");
+      const tmpl = document.getElementById("emptyLocationTemplate");
+      const totalForms = document.getElementById("id_form-TOTAL_FORMS"); // default prefix is "form"
+
+      if (addBtn && rowsWrap && tmpl && totalForms) {
+        addBtn.addEventListener("click", () => {
+          const idx = parseInt(totalForms.value, 10);
+          const html = tmpl.innerHTML.replaceAll("__prefix__", idx);
+          rowsWrap.insertAdjacentHTML("beforeend", html);
+          totalForms.value = idx + 1;
+
+          // init newly added row selects after dataset loaded
+          const newRow = rowsWrap.querySelector(`.location-row[data-form-index="${idx}"]`);
+          if (newRow && allData.length) initRow(newRow);
+
+          // auto-activate the new row
+          if (newRow) newRow.click();
+        });
+      }
+    });
+  </script>
+
+  <script>
+    // ---------- Single map that fills the ACTIVE location row ----------
+    document.addEventListener("DOMContentLoaded", function () {
+      if (!window.L) return;
+
+      const rows = document.getElementById("locationRows");
+      if (!rows) return;
+
+      // helper parse
+      function toNum(val) {
+        if (val === null || val === undefined) return null;
+        const n = parseFloat(String(val).trim());
+        return Number.isFinite(n) ? n : null;
+      }
+
+      // Default center (Vanuatu-ish)
+      const defaultLat = -15.3767;
+      const defaultLng = 166.9592;
+
+      const map = L.map("gpsMap").setView([defaultLat, defaultLng], 6);
+      window.__gpsMap = map;
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+
+      let marker = null;
+      let activeRow = null;
+
+      function getLatLngInputs(rowEl){
+        // Django will render inputs with ids like id_form-0-gps_latitude etc
+        const lat = rowEl.querySelector('input[name$="-gps_latitude"]');
+        const lng = rowEl.querySelector('input[name$="-gps_longtitude"]');
+        return { lat, lng };
+      }
+
+      function setMarker(lat, lng, moveMap = true){
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        if (!marker){
+          marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+          marker.on("dragend", () => {
+            if (!activeRow) return;
+            const p = marker.getLatLng();
+            const { lat: latInput, lng: lngInput } = getLatLngInputs(activeRow);
+            if (latInput) latInput.value = p.lat.toFixed(6);
+            if (lngInput) lngInput.value = p.lng.toFixed(6);
+          });
+        } else {
+          marker.setLatLng([lat, lng]);
+        }
+        if (moveMap) map.setView([lat, lng], Math.max(map.getZoom(), 13));
+      }
+
+      function clearActiveStyles(){
+        rows.querySelectorAll(".location-row").forEach(r => r.classList.remove("active"));
+      }
+
+      function activateRow(rowEl){
+        if (!rowEl) return;
+        clearActiveStyles();
+        rowEl.classList.add("active");
+        activeRow = rowEl;
+
+        // if row has coords, move marker there
+        const { lat, lng } = getLatLngInputs(rowEl);
+        const latVal = lat ? toNum(lat.value) : null;
+        const lngVal = lng ? toNum(lng.value) : null;
+
+        if (latVal !== null && lngVal !== null){
+          setMarker(latVal, lngVal, true);
+        }
+      }
+
+      // Activate first row by default
+      const firstRow = rows.querySelector(".location-row");
+      if (firstRow) activateRow(firstRow);
+
+      // Click row to activate
+      rows.addEventListener("click", (e) => {
+        const row = e.target.closest(".location-row");
+        if (row) activateRow(row);
+      });
+
+      // Clicking map sets coords for active row
+      map.on("click", function (e) {
+        if (!activeRow) return;
+        const { lat, lng } = getLatLngInputs(activeRow);
+        if (!lat || !lng) return;
+
+        lat.value = e.latlng.lat.toFixed(6);
+        lng.value = e.latlng.lng.toFixed(6);
+
+        setMarker(e.latlng.lat, e.latlng.lng, false);
+      });
+
+      // Typing coords updates marker (event delegation)
+      let t = null;
+      rows.addEventListener("input", (e) => {
+        const input = e.target;
+        if (!(input.name && (input.name.endsWith("-gps_latitude") || input.name.endsWith("-gps_longtitude")))) return;
+
+        const row = input.closest(".location-row");
+        if (row && row !== activeRow) activateRow(row);
+
+        clearTimeout(t);
+        t = setTimeout(() => {
+          if (!activeRow) return;
+          const { lat, lng } = getLatLngInputs(activeRow);
+          const latVal = lat ? toNum(lat.value) : null;
+          const lngVal = lng ? toNum(lng.value) : null;
+
+          if (latVal === null || lngVal === null) return;
+          if (latVal < -90 || latVal > 90 || lngVal < -180 || lngVal > 180) return;
+
+          setMarker(latVal, lngVal, false);
+        }, 250);
+      });
+    });
+  </script>
+
+
+
+</body>
+</html>

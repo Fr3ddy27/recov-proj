@@ -1,0 +1,226 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+{% block content %}
+
+<div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+  <label for="yearFilter">Year:</label>
+  <select id="yearFilter">
+    <option value="all">All</option>
+  </select>
+
+  <label for="monthFilter">Month:</label>
+  <select id="monthFilter">
+    <option value="all">All</option>
+    <option value="1">January</option>
+    <option value="2">February</option>
+    <option value="3">March</option>
+    <option value="4">April</option>
+    <option value="5">May</option>
+    <option value="6">June</option>
+    <option value="7">July</option>
+    <option value="8">August</option>
+    <option value="9">September</option>
+    <option value="10">October</option>
+    <option value="11">November</option>
+    <option value="12">December</option>
+  </select>
+
+  <label for="disasterFilter">Disaster:</label>
+  <select id="disasterFilter">
+    <option value="all">All</option>
+  </select>
+
+  <label for="islandFilter">Island:</label>
+  <select id="islandFilter">
+    <option value="all">All</option>
+  </select>
+</div>
+
+<div id="timeline"></div>
+
+<link href="https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css" rel="stylesheet" />
+<script src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+  }
+
+  #timeline {
+    width: 100%;
+    height: 80vh;
+    background: rgb(246 247 251);
+  }
+
+  .vis-item {
+    border-radius: 10px !important;
+    padding: 5px;
+    font-size: 12px;
+  }
+
+  .vis-item:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    opacity: 0.9;
+    cursor: pointer;
+  }
+
+  .vis-tooltip {
+    font-size: 13px;
+  }
+
+  .vis-vertical-scroll {
+    visibility: hidden;
+  }
+
+  select {
+    border: solid 1px #d8d8d8;
+    border-radius: 6px;
+  }
+</style>
+
+<script>
+const projects = {{ PROJECTS_JSON|safe }};
+
+// Define colors by project status
+const statusColors = {
+  'Not Started': '#9ca3af',
+  'In Progress': '#3b82f6',
+  'Completed': '#10b981',
+  'Delayed': '#f97316',
+  'Cancelled': '#ef4444',
+  'Unspecified': '#6b7280'
+};
+
+function createItems(data) {
+  return data.map(p => {
+    const endDate = p.completion_date ? new Date(p.completion_date) : new Date();
+    const startDate = p.start_date ? new Date(p.start_date) : new Date(endDate);
+    if (!p.start_date && p.progress_pct) {
+      startDate.setDate(endDate.getDate() - Math.floor(365 * (p.progress_pct / 100)));
+    }
+
+    const status = p.status || 'Unspecified';
+
+    return {
+      id: p.id,
+      content: `<b>${(p.name ?? "").trim() || "Untitled Projects"}</b>`,
+      start: startDate,
+      end: endDate,
+      title: `<b>GIP:</b> ${p.gip || 'Unknown'}<br>
+              <b>Description:</b> ${p.description || 'No description'}<br>
+              <b>Timeframe:</b> ${startDate.toLocaleDateString()} ➜ ${endDate.toLocaleDateString()}<br>
+              <b>Disaster Type:</b> ${p.disaster_type || 'Unspecified'}<br>          
+              <b>Funding Source:</b> ${p.funder || 'Unknown'}<br>
+              <b>Island:</b> ${p.island || 'Unknown'}<br><br><hr>
+              <b>Budget:</b> ${p.approved ? Number(p.approved).toLocaleString() + 'vt' : 'Unknown'}<br>
+              <b>Expenditure:</b> ${p.expenditure ? Number(p.expenditure).toLocaleString() + 'vt' : 'Unknown'}`,
+      style: `background-color: ${statusColors[status] || '#6b7280'}; color: #fff; border: none;`
+    };
+  });
+}
+
+// Initialize timeline
+const container = document.getElementById('timeline');
+const options = {
+  stack: true,
+  verticalScroll: true,
+  zoomKey: 'ctrlKey',
+  tooltip: { followMouse: true },
+  maxHeight: '100%',
+  minHeight: '100%',
+  margin: { item: 10 },
+  showCurrentTime: true,
+  orientation: {
+    axis: 'top',
+    item: 'top'
+  }
+};
+
+let timeline = new vis.Timeline(container, createItems(projects), options);
+
+// Populate year filter dynamically
+const years = [...new Set(projects.flatMap(p => {
+  const startYear = p.start_date ? new Date(p.start_date).getFullYear() : null;
+  const endYear = p.completion_date ? new Date(p.completion_date).getFullYear() : null;
+  return [startYear, endYear].filter(y => y !== null);
+}))].sort();
+
+const yearFilter = document.getElementById('yearFilter');
+years.forEach(y => {
+  const option = document.createElement('option');
+  option.value = y;
+  option.textContent = y;
+  yearFilter.appendChild(option);
+});
+
+// Populate disaster type filter dynamically
+const disasterTypes = [...new Set(projects.map(p => p.disaster_type).filter(d => d))].sort();
+const disasterFilter = document.getElementById('disasterFilter');
+disasterTypes.forEach(d => {
+  const option = document.createElement('option');
+  option.value = d;
+  option.textContent = d;
+  disasterFilter.appendChild(option);
+});
+
+// Populate island filter dynamically
+const islands = [...new Set(projects.map(p => p.island).filter(i => i))].sort();
+const islandFilter = document.getElementById('islandFilter');
+islands.forEach(i => {
+  const option = document.createElement('option');
+  option.value = i;
+  option.textContent = i;
+  islandFilter.appendChild(option);
+});
+
+const monthFilter = document.getElementById('monthFilter');
+
+function filterTimeline() {
+  const selectedYear = yearFilter.value;
+  const selectedMonth = monthFilter.value;
+  const selectedDisaster = disasterFilter.value;
+  const selectedIsland = islandFilter.value;
+
+  const filtered = projects.filter(p => {
+    const start = p.start_date ? new Date(p.start_date) : null;
+    const end = p.completion_date ? new Date(p.completion_date) : null;
+    
+    let matchYear = true;
+    if (selectedYear !== 'all') {
+      matchYear = (start && start.getFullYear() == selectedYear) || (end && end.getFullYear() == selectedYear);
+    }
+
+    let matchMonth = true;
+    if (selectedMonth !== 'all') {
+      matchMonth = (start && (start.getMonth()+1) == selectedMonth) || (end && (end.getMonth()+1) == selectedMonth);
+    }
+
+    let matchDisaster = true;
+    if (selectedDisaster !== 'all') {
+      matchDisaster = p.disaster_type === selectedDisaster;
+    }
+
+    let matchIsland = true;
+    if (selectedIsland !== 'all') {
+      matchIsland = p.island === selectedIsland;
+    }
+
+    return matchYear && matchMonth && matchDisaster && matchIsland;
+  });
+
+  timeline.setItems(createItems(filtered));
+}
+
+// Add event listeners
+yearFilter.addEventListener('change', filterTimeline);
+monthFilter.addEventListener('change', filterTimeline);
+disasterFilter.addEventListener('change', filterTimeline);
+islandFilter.addEventListener('change', filterTimeline);
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Django stuff
+*.log
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# Environment variables / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
