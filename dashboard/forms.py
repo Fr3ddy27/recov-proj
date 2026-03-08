@@ -82,10 +82,10 @@ class RecoveryProjectForm(forms.ModelForm):
         ]
 
         widgets = {
-            "project_title": forms.Textarea(attrs={"rows": 2}),
-            "project_description": forms.Textarea(attrs={"rows": 4}),
-            "central_tender_board_link": forms.Textarea(attrs={"rows": 2}),
-            "key_risks_to_implementation": forms.Textarea(attrs={"rows": 4}),
+            "project_title": forms.Textarea(attrs={"rows": 1}),
+            "project_description": forms.Textarea(attrs={"rows": 1}),
+            "central_tender_board_link": forms.Textarea(attrs={"rows": 1}),
+            "key_risks_to_implementation": forms.Textarea(attrs={"rows": 1}),
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "completion_date": forms.DateInput(attrs={"type": "date"}),
         }
