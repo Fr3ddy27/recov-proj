@@ -490,6 +490,8 @@ def recovery_projects_api_list(request):
         "data": rows,
         "last_page": paginator.num_pages,
     })
+
+
 @login_required(login_url="login")
 @require_http_methods(["PATCH", "DELETE"])
 @csrf_protect
@@ -689,31 +691,65 @@ def project_status_indicators_api_list(request, project_id):
             "id": ind.id,
             "status_indicator": str(ind.status_indicator) if ind.status_indicator is not None else None,
             "description": ind.description,
+            "attachment": os.path.basename(ind.attachment.name) if ind.attachment else None,
+            "attachment_url": ind.attachment.url if ind.attachment else None,
         })
     return JsonResponse({"data": rows}, safe=False)
 
 @login_required(login_url="login")
-@require_http_methods(["PATCH", "DELETE"])
+@require_http_methods(["PATCH", "POST", "DELETE"])
 @csrf_protect
 def project_status_indicators_api_detail(request, pk):
     ind = get_object_or_404(ProjectStatusIndicators, id=pk)
+
     if request.method == "DELETE":
+        if ind.attachment:
+            ind.attachment.delete(save=False)
         ind.delete()
         return JsonResponse({"ok": True, "id": pk})
+
+    # ---------- FILE UPLOAD ----------
+    if request.method == "POST" and request.FILES.get("attachment"):
+        uploaded_file = request.FILES["attachment"]
+
+        if ind.attachment:
+            ind.attachment.delete(save=False)
+
+        ind.attachment = uploaded_file
+        ind.save(update_fields=["attachment"])
+
+        return JsonResponse({
+            "ok": True,
+            "id": ind.id,
+            "field": "attachment",
+            "value": os.path.basename(ind.attachment.name) if ind.attachment else None,
+            "attachment": os.path.basename(ind.attachment.name) if ind.attachment else None,
+            "attachment_url": ind.attachment.url if ind.attachment else None,
+        })
+
+    # ---------- NORMAL JSON PATCH ----------
+    if request.method != "PATCH":
+        return HttpResponseBadRequest("Invalid upload request")
+
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
         return HttpResponseBadRequest("Invalid JSON")
+
     field = payload.get("field")
     value = payload.get("value")
+
     IND_EDITABLE_FIELDS = {
         "status_indicator": "decimal",
         "description": "text",
     }
+
     if field not in IND_EDITABLE_FIELDS:
         return HttpResponseBadRequest("Field not editable")
+
     field_type = IND_EDITABLE_FIELDS[field]
     raw = ("" if value is None else str(value)).strip()
+
     try:
         if field_type == "decimal":
             val = None if raw == "" else Decimal(raw)
@@ -721,10 +757,20 @@ def project_status_indicators_api_detail(request, pk):
             val = raw
     except (ValueError, InvalidOperation):
         return HttpResponseBadRequest("Invalid value")
+
     setattr(ind, field, val)
     ind.save(update_fields=[field])
+
     out_val = str(val) if val is not None else None
-    return JsonResponse({"ok": True, "id": ind.id, "field": field, "value": out_val})
+
+    return JsonResponse({
+        "ok": True,
+        "id": ind.id,
+        "field": field,
+        "value": out_val,
+        "attachment": os.path.basename(ind.attachment.name) if ind.attachment else None,
+        "attachment_url": ind.attachment.url if ind.attachment else None,
+    })
 
 @login_required(login_url="login")
 @require_http_methods(["POST"])
@@ -736,4 +782,19 @@ def project_status_indicators_api_create(request, project_id):
         "id": ind.id,
         "status_indicator": str(ind.status_indicator) if ind.status_indicator is not None else None,
         "description": ind.description,
+        "attachment": os.path.basename(ind.attachment.name) if ind.attachment else None,
+        "attachment_url": ind.attachment.url if ind.attachment else None,
     })
+
+@login_required(login_url="login")
+def download_status_indicator_attachment(request, pk):
+    ind = get_object_or_404(ProjectStatusIndicators, id=pk)
+
+    if not ind.attachment:
+        raise Http404("No attachment")
+
+    return FileResponse(
+        ind.attachment.open("rb"),
+        as_attachment=True,
+        filename=os.path.basename(ind.attachment.name),
+    )
