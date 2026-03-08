@@ -51,7 +51,8 @@ class ProjectStatusIndicators(models.Model):
     project = models.ForeignKey(RecoveryProject, to_field="project_id", db_column="project_id", on_delete=models.DO_NOTHING, blank=True,null=True,related_name="status_indicators",)
     status_indicator = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)  # max_digits and decimal_places have been guessed, as this database handles decimal fields as float
     description = models.CharField(max_length=150, blank=True, null=True)
-
+    attachment = models.FileField(upload_to="attachments/project_status_indicators/", blank=True, null=True)
+    
     class Meta:
         managed = False
         db_table = 'project_status_indicators'
