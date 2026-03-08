@@ -326,6 +326,51 @@
       padding: 8px 10px;
       border-radius: 12px;
     }
+.field-with-upload-icon {
+  width: 100%;
+}
+
+.input-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon-wrapper input,
+.input-icon-wrapper select,
+.input-icon-wrapper textarea {
+  width: 100%;
+  padding-right: 42px;
+}
+
+.upload-trigger {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  line-height: 1;
+  z-index: 2;
+}
+
+.upload-trigger:hover {
+  color: #000;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.selected-file-name {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+
 /* Wizard step panels */
 .step-panel { display: none; }
 .step-panel.active { display: block; }
@@ -401,34 +446,38 @@
               {{ form.program }}
             </div>
 
-            <div class="full">
-              <label for="{{ form.project_title.id_for_label }}">Project title</label>
+            <div>
+              <label for="{{ form.project_title.id_for_label }}">Project Title</label>
               {{ form.project_title }}
             </div>
 
-            <div class="full">
+            <div>
               <label for="{{ form.project_description.id_for_label }}">Project description</label>
               {{ form.project_description }}
             </div>
 
-<div class="full">
-  <label>Status indicators</label>
-  {{ status_formset.management_form }}
+            <div>
+              <label for="{{ form.start_date.id_for_label }}">Start date</label>
+              {{ form.start_date }}
+            </div>
 
-  <div style="display:grid; gap:12px; margin-top:8px;">
-    {% for sf in status_formset %}
-      <div style="border:1px solid #e5e7eb; padding:12px; border-radius:14px;">
-        <div class="grid" style="padding:0;">
+            <div>
+              <label for="{{ form.completion_date.id_for_label }}">Completion date</label>
+              {{ form.completion_date }}
+            </div>
 
-          <div>
-            {{ sf.description }}
+          <div class="full">
+            <label>Status indicators</label>
+            {{ status_formset.management_form }}
+
+          <div style="display:flex; gap:4px; margin-top:8px; flex-wrap:nowrap; align-items:flex-start; overflow-x:auto;">
+            {% for sf in status_formset %}
+              <div style="padding:4px; border-radius:14px; min-width:100px; flex:0 0 auto;">
+                {{ sf.description }}
+              </div>
+            {% endfor %}
           </div>
-
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-</div>
+          </div>
 
             <div class="full smallmuted">
               Step 1 of 3 — add the basic project details.
@@ -445,18 +494,30 @@
               {{ form.funding_status }}
             </div>
 
-            <div class="compact-row full">
-              <div>
-                <label for="{{ form.gip.id_for_label }}">GIP</label>
+          <div class="compact-row">
+            <div class="field-with-upload-icon">
+              <label for="{{ form.gip.id_for_label }}">GIP</label>
+              <div class="input-icon-wrapper">
                 {{ form.gip }}
-              </div>
-              <div>
-                <label for="{{ form.gip_attachment.id_for_label }}">Upload GIP Attachment</label>
-                {{ form.gip_attachment }}
-              </div>
-            </div>
 
-            <div class="full">
+                <label
+                  for="{{ form.gip_attachment.id_for_label }}"
+                  class="upload-trigger"
+                  title="Upload GIP Attachment"
+                >
+                  📂
+                </label>
+
+                <div class="hidden-file-input">
+                  {{ form.gip_attachment }}
+                </div>
+              </div>
+
+              <small id="gip-file-name" class="selected-file-name"></small>
+            </div>
+          </div>
+
+            <div>
               <label for="{{ form.central_tender_board_link.id_for_label }}">Central Tender Board link</label>
               {{ form.central_tender_board_link }}
             </div>
@@ -472,28 +533,18 @@
             </div>
 
             <div>
-              <label for="{{ form.project_total_funding_us.id_for_label }}">Total funding (USD)</label>
+              <label for="{{ form.project_total_funding_us.id_for_label }}">Total funding (USD)💵</label>
               {{ form.project_total_funding_us }}
             </div>
 
             <div>
-              <label for="{{ form.project_total_funding_vt.id_for_label }}">Total funding (Vatu)</label>
+              <label for="{{ form.project_total_funding_vt.id_for_label }}">Total funding (VT)💵</label>
               {{ form.project_total_funding_vt }}
             </div>
 
             <div>
-              <label for="{{ form.project_expenditure.id_for_label }}">Project expenditure</label>
+              <label for="{{ form.project_expenditure.id_for_label }}">Project expenditure (VT)💵</label>
               {{ form.project_expenditure }}
-            </div>
-
-            <div>
-              <label for="{{ form.start_date.id_for_label }}">Start date</label>
-              {{ form.start_date }}
-            </div>
-
-            <div>
-              <label for="{{ form.completion_date.id_for_label }}">Completion date</label>
-              {{ form.completion_date }}
             </div>
 
             <div class="full smallmuted">
@@ -506,12 +557,12 @@
         <div class="step-panel" data-step="3">
           <div class="grid">
 
-            <div class="full">
+            <div>
               <label for="{{ form.type_of_disaster_operation.id_for_label }}">Type of disaster operation</label>
               {{ form.type_of_disaster_operation }}
             </div>
 
-            <div class="full">
+            <div>
               <label for="{{ form.key_risks_to_implementation.id_for_label }}">Key risks to implementation</label>
               {{ form.key_risks_to_implementation }}
             </div>
@@ -968,7 +1019,18 @@
     });
   </script>
 
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const fileInput = document.getElementById("{{ form.gip_attachment.id_for_label }}");
+    const fileName = document.getElementById("gip-file-name");
 
+    if (fileInput && fileName) {
+      fileInput.addEventListener("change", function () {
+        fileName.textContent = this.files.length ? this.files[0].name : "";
+      });
+    }
+  });
+</script>
 
 </body>
 </html>
