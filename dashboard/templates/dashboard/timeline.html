@@ -2,137 +2,633 @@
 {% load static %}
 {% block content %}
 
-<div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
-  <label for="yearFilter">Year:</label>
-  <select id="yearFilter">
-    <option value="all">All</option>
-  </select>
+<div class="timeline-page">
+  <div class="timeline-toolbar">
+    <div class="filter-group">
+      <label for="yearFilter">Year</label>
+      <select id="yearFilter">
+        <option value="all">All</option>
+      </select>
+    </div>
 
-  <label for="monthFilter">Month:</label>
-  <select id="monthFilter">
-    <option value="all">All</option>
-    <option value="1">January</option>
-    <option value="2">February</option>
-    <option value="3">March</option>
-    <option value="4">April</option>
-    <option value="5">May</option>
-    <option value="6">June</option>
-    <option value="7">July</option>
-    <option value="8">August</option>
-    <option value="9">September</option>
-    <option value="10">October</option>
-    <option value="11">November</option>
-    <option value="12">December</option>
-  </select>
+    <div class="filter-group">
+      <label for="monthFilter">Month</label>
+      <select id="monthFilter">
+        <option value="all">All</option>
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4">April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+    </div>
 
-  <label for="disasterFilter">Disaster:</label>
-  <select id="disasterFilter">
-    <option value="all">All</option>
-  </select>
+    <div class="filter-group">
+      <label for="disasterFilter">Disaster</label>
+      <select id="disasterFilter">
+        <option value="all">All</option>
+      </select>
+    </div>
 
-  <label for="islandFilter">Island:</label>
-  <select id="islandFilter">
-    <option value="all">All</option>
-  </select>
+    <div class="filter-group">
+      <label for="islandFilter">Island</label>
+      <select id="islandFilter">
+        <option value="all">All</option>
+      </select>
+    </div>
+
+    <button id="resetFilters" type="button" class="btn-reset">Reset</button>
+  </div>
+
+  <div class="timeline-meta">
+    <div class="timeline-legend" id="timelineLegend"></div>
+    <div class="timeline-count" id="timelineCount">0 projects</div>
+  </div>
+
+  <div id="emptyState" class="empty-state" hidden>
+    No projects match the selected filters.
+  </div>
+
+  <div id="timeline"></div>
 </div>
 
-<div id="timeline"></div>
+<div id="projectModal" class="modal-overlay">
+  <div class="project-modal" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+    <div class="modal-header">
+      <div>
+        <p class="modal-eyebrow">Project Details</p>
+        <h2 id="projectModalTitle" class="modal-title">Untitled Project</h2>
+      </div>
+      <button id="closeProjectModal" type="button" class="modal-close" aria-label="Close modal">
+        &times;
+      </button>
+    </div>
+
+    <div id="projectModalBody" class="modal-body"></div>
+
+    <div class="modal-footer">
+      <a style="visibility: hidden;" id="projectModalLink" href="#" class="modal-link" hidden></a>
+      <button id="dismissProjectModal" type="button" class="btn-reset">Close</button>
+    </div>
+  </div>
+</div>
 
 <link href="https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css" rel="stylesheet" />
 <script src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
 
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
+  .timeline-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
     width: 100%;
+  }
+
+  .timeline-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 2px;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+  }
+
+  .filter-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  select {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    color: #111827;
+    outline: none;
+  }
+
+  select:focus,
+  .btn-reset:focus,
+  .modal-close:focus,
+  .modal-link:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+
+  .btn-reset {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #111827;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .btn-reset:hover {
+    opacity: 0.92;
+  }
+
+  .timeline-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .timeline-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: center;
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  .timeline-count {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 600;
   }
 
   #timeline {
     width: 100%;
-    height: 80vh;
-    background: rgb(246 247 251);
+    min-height: 520px;
+    height: 78vh;
+    background: #f6f7fb;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .empty-state {
+    padding: 18px;
+    border: 1px dashed #d1d5db;
+    border-radius: 12px;
+    background: #f9fafb;
+    color: #6b7280;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .vis-timeline {
+    border: none !important;
   }
 
   .vis-item {
     border-radius: 10px !important;
-    padding: 5px;
+    padding: 6px 8px !important;
     font-size: 12px;
+    border: none !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
   }
 
   .vis-item:hover {
-    transform: scale(1.03);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+    opacity: 0.95;
+    cursor: pointer;
+    z-index: 20;
+  }
+
+  .vis-labelset .vis-label {
+    color: #374151;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+  }
+
+  .project-modal {
+    width: min(760px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+    border: 1px solid #e5e7eb;
+  }
+
+  .modal-header,
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 22px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .modal-footer {
+    border-bottom: none;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .modal-eyebrow {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .modal-title {
+    margin: 0;
+    font-size: 24px;
+    line-height: 1.2;
+    color: #111827;
+  }
+
+  .modal-close {
+    border: none;
+    background: #f3f4f6;
+    color: #111827;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    font-size: 24px;
+    line-height: 1;
     cursor: pointer;
   }
 
-  .vis-tooltip {
-    font-size: 13px;
+  .modal-body {
+    padding: 22px;
+    display: grid;
+    gap: 18px;
   }
 
-  .vis-vertical-scroll {
-    visibility: hidden;
+  .modal-section {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f9fafb;
+    padding: 16px;
   }
 
-  select {
-    border: solid 1px #d8d8d8;
-    border-radius: 6px;
+  .modal-section-title {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+  }
+
+  .modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .modal-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+  }
+
+  .modal-value {
+    font-size: 14px;
+    color: #111827;
+    word-break: break-word;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .modal-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    .filter-group {
+      min-width: calc(50% - 6px);
+    }
+
+    #timeline {
+      height: 70vh;
+      min-height: 460px;
+    }
+
+    .modal-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .filter-group {
+      min-width: 100%;
+    }
+
+    .btn-reset {
+      width: 100%;
+    }
+
+    .modal-header,
+    .modal-footer,
+    .modal-body {
+      padding: 16px;
+    }
+
+    .modal-footer {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .modal-link,
+    #dismissProjectModal {
+      width: 100%;
+      text-align: center;
+    }
   }
 </style>
 
 <script>
 const projects = {{ PROJECTS_JSON|safe }};
 
-// Define colors by project status
 const statusColors = {
-  'Not Started': '#9ca3af',
-  'In Progress': '#3b82f6',
-  'Completed': '#10b981',
-  'Delayed': '#f97316',
-  'Cancelled': '#ef4444',
-  'Unspecified': '#6b7280'
+  'Not Started': '#6b7280',
+  'In Progress': '#2563eb',
+  'Completed': '#059669',
+  'Delayed': '#ea580c',
+  'Cancelled': '#dc2626',
+  'Unspecified': '#4b5563'
 };
 
-function createItems(data) {
-  return data.map(p => {
-    const endDate = p.completion_date ? new Date(p.completion_date) : new Date();
-    const startDate = p.start_date ? new Date(p.start_date) : new Date(endDate);
-    if (!p.start_date && p.progress_pct) {
-      startDate.setDate(endDate.getDate() - Math.floor(365 * (p.progress_pct / 100)));
-    }
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-    const status = p.status || 'Unspecified';
+function normalizeStatus(status) {
+  const cleaned = String(status ?? '').trim();
+  return statusColors[cleaned] ? cleaned : 'Unspecified';
+}
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') {
+    return 'Unknown';
+  }
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    return escapeHtml(value);
+  }
+
+  return `${numeric.toLocaleString()} VT`;
+}
+
+function parseDate(dateString) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDate(date) {
+  if (!date) return 'Unknown';
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function inferStartDate(project, endDate) {
+  const explicitStart = parseDate(project.start_date);
+  if (explicitStart) return explicitStart;
+
+  const fallbackEnd = endDate || new Date();
+  const inferred = new Date(fallbackEnd);
+
+  if (project.progress_pct !== null && project.progress_pct !== undefined && project.progress_pct !== '') {
+    const progress = Number(project.progress_pct);
+    if (!Number.isNaN(progress) && progress > 0) {
+      inferred.setDate(inferred.getDate() - Math.floor(365 * (progress / 100)));
+      return inferred;
+    }
+  }
+
+  return fallbackEnd;
+}
+
+function createItems(data) {
+  return data.map(project => {
+    const endDate = parseDate(project.completion_date) || new Date();
+    const startDate = inferStartDate(project, endDate);
+    const status = normalizeStatus(project.status);
+    const backgroundColor = statusColors[status];
 
     return {
-      id: p.id,
-      content: `<b>${(p.name ?? "").trim() || "Untitled Projects"}</b>`,
+      id: project.id,
+      content: `<b>${escapeHtml((project.name ?? '').trim() || 'Untitled Project')}</b>`,
       start: startDate,
       end: endDate,
-      title: `<b>GIP:</b> ${p.gip || 'Unknown'}<br>
-              <b>Description:</b> ${p.description || 'No description'}<br>
-              <b>Timeframe:</b> ${startDate.toLocaleDateString()} ➜ ${endDate.toLocaleDateString()}<br>
-              <b>Disaster Type:</b> ${p.disaster_type || 'Unspecified'}<br>          
-              <b>Funding Source:</b> ${p.funder || 'Unknown'}<br>
-              <b>Island:</b> ${p.island || 'Unknown'}<br><br><hr>
-              <b>Budget:</b> ${p.approved ? Number(p.approved).toLocaleString() + 'vt' : 'Unknown'}<br>
-              <b>Expenditure:</b> ${p.expenditure ? Number(p.expenditure).toLocaleString() + 'vt' : 'Unknown'}`,
-      style: `background-color: ${statusColors[status] || '#6b7280'}; color: #fff; border: none;`
+      style: `background-color: ${backgroundColor}; color: #ffffff;`,
+      projectData: project
     };
   });
 }
 
-// Initialize timeline
+function getProjectDateRange(project) {
+  const endDate = parseDate(project.completion_date) || new Date();
+  const startDate = inferStartDate(project, endDate);
+  return { startDate, endDate };
+}
+
+function intersectsRange(projectStart, projectEnd, filterStart, filterEnd) {
+  return projectStart <= filterEnd && projectEnd >= filterStart;
+}
+
+function getSelectedRange(selectedYear, selectedMonth) {
+  if (selectedYear === 'all' && selectedMonth === 'all') return null;
+
+  const now = new Date();
+  const year = selectedYear === 'all' ? now.getFullYear() : Number(selectedYear);
+
+  if (selectedMonth !== 'all') {
+    const monthIndex = Number(selectedMonth) - 1;
+    return {
+      start: new Date(year, monthIndex, 1, 0, 0, 0, 0),
+      end: new Date(year, monthIndex + 1, 0, 23, 59, 59, 999)
+    };
+  }
+
+  return {
+    start: new Date(year, 0, 1, 0, 0, 0, 0),
+    end: new Date(year, 11, 31, 23, 59, 59, 999)
+  };
+}
+
+function renderProjectModal(project) {
+  const modalTitle = document.getElementById('projectModalTitle');
+  const modalBody = document.getElementById('projectModalBody');
+  const modalLink = document.getElementById('projectModalLink');
+
+  const endDate = parseDate(project.completion_date) || new Date();
+  const startDate = inferStartDate(project, endDate);
+  const status = normalizeStatus(project.status);
+  const projectUrl = project.url || project.detail_url || '';
+
+  modalTitle.textContent = (project.name ?? '').trim() || 'Untitled Project';
+
+  modalBody.innerHTML = `
+    <div class="modal-section">
+      <h3 class="modal-section-title">Overview🔎</h3>
+      <div class="modal-grid">
+        <div class="modal-field">
+          <span class="modal-label">GIP</span>
+          <span class="modal-value">${escapeHtml(project.gip || 'Unknown')}</span>
+        </div>
+        <div class="modal-field">
+          <!-- <span class="modal-label">Status</span>
+          <span class="modal-value">
+            <span class="status-badge" style="background:${statusColors[status]}">
+              ${escapeHtml(status)}
+            </span>
+          </span> -->
+        </div>
+        <div class="modal-field" style="grid-column: 1 / -1;">
+          <span class="modal-label">Description</span>
+          <span class="modal-value">${escapeHtml(project.description || 'No description')}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h3 class="modal-section-title">Schedule & Location📌</h3>
+      <div class="modal-grid">
+        <div class="modal-field">
+          <span class="modal-label">Start Date</span>
+          <span class="modal-value">${escapeHtml(formatDate(startDate))}</span>
+        </div>
+        <div class="modal-field">
+          <span class="modal-label">Completion Date</span>
+          <span class="modal-value">${escapeHtml(formatDate(endDate))}</span>
+        </div>
+        <div class="modal-field">
+          <span class="modal-label">Disaster Type</span>
+          <span class="modal-value">${escapeHtml(project.disaster_type || 'Unspecified')}</span>
+        </div>
+        <div class="modal-field">
+          <span class="modal-label">Island</span>
+          <span class="modal-value">${escapeHtml(project.island || 'Unknown')}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h3 class="modal-section-title">Funding💵</h3>
+      <div class="modal-grid">
+        <div class="modal-field">
+          <span class="modal-label">Funding Source</span>
+          <span class="modal-value">${escapeHtml(project.funder || 'Unknown')}</span>
+        </div>
+        <div class="modal-field">
+          <span class="modal-label">Budget</span>
+          <span class="modal-value">${formatCurrency(project.approved)}</span>
+        </div>
+        <div class="modal-field">
+          <span class="modal-label">Expenditure</span>
+          <span class="modal-value">${formatCurrency(project.expenditure)}</span>
+        </div>
+        <div class="modal-field">
+          <span class="modal-label">Progress</span>
+          <span class="modal-value">${
+            project.progress_pct !== null &&
+            project.progress_pct !== undefined &&
+            project.progress_pct !== ''
+              ? `${escapeHtml(project.progress_pct)}%`
+              : 'Unknown'
+          }</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (projectUrl) {
+    modalLink.href = projectUrl;
+    modalLink.hidden = false;
+  } else {
+    modalLink.hidden = true;
+    modalLink.removeAttribute('href');
+  }
+
+  openProjectModal();
+}
+
 const container = document.getElementById('timeline');
+const items = new vis.DataSet(createItems(projects));
+
 const options = {
   stack: true,
   verticalScroll: true,
   zoomKey: 'ctrlKey',
-  tooltip: { followMouse: true },
   maxHeight: '100%',
   minHeight: '100%',
-  margin: { item: 10 },
+  margin: { item: 10, axis: 8 },
   showCurrentTime: true,
   orientation: {
     axis: 'top',
@@ -140,87 +636,182 @@ const options = {
   }
 };
 
-let timeline = new vis.Timeline(container, createItems(projects), options);
-
-// Populate year filter dynamically
-const years = [...new Set(projects.flatMap(p => {
-  const startYear = p.start_date ? new Date(p.start_date).getFullYear() : null;
-  const endYear = p.completion_date ? new Date(p.completion_date).getFullYear() : null;
-  return [startYear, endYear].filter(y => y !== null);
-}))].sort();
+const timeline = new vis.Timeline(container, items, options);
 
 const yearFilter = document.getElementById('yearFilter');
-years.forEach(y => {
-  const option = document.createElement('option');
-  option.value = y;
-  option.textContent = y;
-  yearFilter.appendChild(option);
-});
-
-// Populate disaster type filter dynamically
-const disasterTypes = [...new Set(projects.map(p => p.disaster_type).filter(d => d))].sort();
-const disasterFilter = document.getElementById('disasterFilter');
-disasterTypes.forEach(d => {
-  const option = document.createElement('option');
-  option.value = d;
-  option.textContent = d;
-  disasterFilter.appendChild(option);
-});
-
-// Populate island filter dynamically
-const islands = [...new Set(projects.map(p => p.island).filter(i => i))].sort();
-const islandFilter = document.getElementById('islandFilter');
-islands.forEach(i => {
-  const option = document.createElement('option');
-  option.value = i;
-  option.textContent = i;
-  islandFilter.appendChild(option);
-});
-
 const monthFilter = document.getElementById('monthFilter');
+const disasterFilter = document.getElementById('disasterFilter');
+const islandFilter = document.getElementById('islandFilter');
+const resetFiltersButton = document.getElementById('resetFilters');
+const emptyState = document.getElementById('emptyState');
+const timelineCount = document.getElementById('timelineCount');
+const legendContainer = document.getElementById('timelineLegend');
+
+const projectModal = document.getElementById('projectModal');
+const closeProjectModalButton = document.getElementById('closeProjectModal');
+const dismissProjectModalButton = document.getElementById('dismissProjectModal');
+
+function openProjectModal() {
+  projectModal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeProjectModal() {
+  projectModal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function populateLegend() {
+  Object.entries(statusColors).forEach(([label, color]) => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `
+      <span class="legend-swatch" style="background:${color};"></span>
+      <span>${escapeHtml(label)}</span>
+    `;
+    legendContainer.appendChild(item);
+  });
+}
+
+function populateYears() {
+  const years = [...new Set(projects.flatMap(project => {
+    const startYear = parseDate(project.start_date)?.getFullYear();
+    const endYear = parseDate(project.completion_date)?.getFullYear();
+    return [startYear, endYear].filter(Boolean);
+  }))].sort((a, b) => a - b);
+
+  years.forEach(year => {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearFilter.appendChild(option);
+  });
+}
+
+function populateDisasterTypes() {
+  const disasterTypes = [...new Set(
+    projects
+      .map(project => (project.disaster_type || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
+  disasterTypes.forEach(type => {
+    const option = document.createElement('option');
+    option.value = type;
+    option.textContent = type;
+    disasterFilter.appendChild(option);
+  });
+}
+
+function populateIslands() {
+  const islands = [...new Set(
+    projects
+      .map(project => (project.island || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
+  islands.forEach(island => {
+    const option = document.createElement('option');
+    option.value = island;
+    option.textContent = island;
+    islandFilter.appendChild(option);
+  });
+}
+
+function updateCount(count) {
+  timelineCount.textContent = `${count} project${count === 1 ? '' : 's'}`;
+}
+
+function setEmptyState(visible) {
+  emptyState.hidden = !visible;
+  container.style.display = visible ? 'none' : 'block';
+}
 
 function filterTimeline() {
   const selectedYear = yearFilter.value;
   const selectedMonth = monthFilter.value;
   const selectedDisaster = disasterFilter.value;
   const selectedIsland = islandFilter.value;
+  const selectedRange = getSelectedRange(selectedYear, selectedMonth);
 
-  const filtered = projects.filter(p => {
-    const start = p.start_date ? new Date(p.start_date) : null;
-    const end = p.completion_date ? new Date(p.completion_date) : null;
-    
-    let matchYear = true;
-    if (selectedYear !== 'all') {
-      matchYear = (start && start.getFullYear() == selectedYear) || (end && end.getFullYear() == selectedYear);
-    }
+  const filtered = projects.filter(project => {
+    const { startDate, endDate } = getProjectDateRange(project);
 
-    let matchMonth = true;
-    if (selectedMonth !== 'all') {
-      matchMonth = (start && (start.getMonth()+1) == selectedMonth) || (end && (end.getMonth()+1) == selectedMonth);
-    }
+    const matchDate = !selectedRange || intersectsRange(
+      startDate,
+      endDate,
+      selectedRange.start,
+      selectedRange.end
+    );
 
-    let matchDisaster = true;
-    if (selectedDisaster !== 'all') {
-      matchDisaster = p.disaster_type === selectedDisaster;
-    }
+    const matchDisaster = selectedDisaster === 'all'
+      || (project.disaster_type || '').trim() === selectedDisaster;
 
-    let matchIsland = true;
-    if (selectedIsland !== 'all') {
-      matchIsland = p.island === selectedIsland;
-    }
+    const matchIsland = selectedIsland === 'all'
+      || (project.island || '').trim() === selectedIsland;
 
-    return matchYear && matchMonth && matchDisaster && matchIsland;
+    return matchDate && matchDisaster && matchIsland;
   });
 
-  timeline.setItems(createItems(filtered));
+  items.clear();
+  items.add(createItems(filtered));
+  updateCount(filtered.length);
+  setEmptyState(filtered.length === 0);
+
+  if (filtered.length > 0) {
+    timeline.fit({ animation: true });
+  }
 }
 
-// Add event listeners
+function resetFilters() {
+  yearFilter.value = 'all';
+  monthFilter.value = 'all';
+  disasterFilter.value = 'all';
+  islandFilter.value = 'all';
+  filterTimeline();
+}
+
+timeline.on('select', function(properties) {
+  if (!properties.items.length) return;
+
+  const selected = items.get(properties.items[0]);
+  if (selected && selected.projectData) {
+    renderProjectModal(selected.projectData);
+  }
+});
+
+closeProjectModalButton.addEventListener('click', closeProjectModal);
+dismissProjectModalButton.addEventListener('click', closeProjectModal);
+
+projectModal.addEventListener('click', function(event) {
+  if (event.target === projectModal) {
+    closeProjectModal();
+  }
+});
+
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape' && projectModal.style.display === 'flex') {
+    closeProjectModal();
+  }
+});
+
 yearFilter.addEventListener('change', filterTimeline);
 monthFilter.addEventListener('change', filterTimeline);
 disasterFilter.addEventListener('change', filterTimeline);
 islandFilter.addEventListener('change', filterTimeline);
+resetFiltersButton.addEventListener('click', resetFilters);
 
+populateLegend();
+populateYears();
+populateDisasterTypes();
+populateIslands();
+updateCount(projects.length);
+
+if (projects.length > 0) {
+  timeline.fit({ animation: false });
+} else {
+  setEmptyState(true);
+}
 </script>
 
 {% endblock %}
