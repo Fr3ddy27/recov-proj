@@ -5,7 +5,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'dev-secret-key'
 DEBUG = True
-ALLOWED_HOSTS = ['*']
+
+ALLOWED_HOSTS = ["72.60.79.110"]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://72.60.79.110",
+]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -20,7 +27,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'dashboard',
-
 ]
 
 MIDDLEWARE = [
@@ -38,7 +44,7 @@ ROOT_URLCONF = 'recovery_projects.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [ BASE_DIR / 'dashboard' / 'templates' ],
+        'DIRS': [BASE_DIR / 'dashboard' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -53,7 +59,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'recovery_projects.wsgi.application'
 
-# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -71,13 +76,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [ BASE_DIR / 'dashboard' / 'static' ]
-STATIC_ROOT = BASE_DIR / "staticfiles"  # <-- required for collectstatic
+STATICFILES_DIRS = [BASE_DIR / 'dashboard' / 'static']
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-# Authentication redirects
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "recovery_project_create"
 LOGOUT_REDIRECT_URL = "login"
