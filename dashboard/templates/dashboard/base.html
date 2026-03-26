@@ -83,7 +83,7 @@
              class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
              {% if request.path == '/location/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
             <img src="{% static 'images/map.png' %}" class="w-5 h-5 mr-2" alt="Location"/>
-            <span class="nav-label">OVERVIEW</span>
+            <span class="nav-label">MAP</span>
           </a>
 
 
@@ -91,7 +91,7 @@
              class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
              {% if request.path == '/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
             <img src="{% static 'images/overview.png' %}" class="w-5 h-5 mr-2" alt="Overview"/>
-            <span class="nav-label">SUMARRY</span>
+            <span class="nav-label">SUMMARY</span>
           </a>
 
           <a href="{% url 'projects' %}"
@@ -101,13 +101,19 @@
             <span class="nav-label">PROJECTS</span>
           </a>
 
-
-
           <a href="{% url 'timeline' %}"
              class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
              {% if request.path == '/timeline/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
             <img src="{% static 'images/timeline.png' %}" class="w-5 h-5 mr-2" alt="Timeline"/>
             <span class="nav-label">TIMELINE</span>
+          </a>
+        
+          <hr id="sidebarDivider" class="my-4 border-slate-300">
+          <a href="{% url 'reports' %}"
+             class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
+             {% if request.path == '/reports/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
+            <img src="{% static 'images/timeline.png' %}" class="w-5 h-5 mr-2" alt="Timeline"/>
+            <span class="nav-label">6 MONTHLY REPORTS</span>
           </a>
 
           {% if user.is_authenticated %}
