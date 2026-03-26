@@ -272,7 +272,7 @@
         <div><span class="text-slate-500">Expenditure:</span> VT <span id="modalExpenditure"></span></div>
         <div><span class="text-slate-500">Remaining:</span> VT <span id="modalRemaining"></span></div>
         <div><span class="text-slate-500">Status:</span> <span id="modalStatus"></span></div>
-        <div><span class="text-slate-500">Area council:</span> <span id="areaCouncil"></span></div>
+        <!--<div><span class="text-slate-500">Area council:</span> <span id="areaCouncil"></span></div>-->
         <div><span class="text-slate-500">Disaster Type</span> <span id="disasterType"></span></div>
         <div class="col-span-2 grid grid-cols-2 gap-4">
           <div>
@@ -491,81 +491,120 @@ document.addEventListener("DOMContentLoaded", function () {
 
   updateFundingCardStyles();
 
-  let modalMap;
-  let modalMarker;
+let modalMap;
+let modalMarkersLayer;
 
-  function parseDjangoDateString(s){
-    if(!s || s === "N/A") return null;
-    const d = new Date(s);
-    if (isNaN(d.getTime())) return null;
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function parseDjangoDateString(s){
+  if(!s || s === "N/A") return null;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+window.showProjectModal = function(id) {
+  const p = byId[id];
+  if (!p) return;
+
+  document.getElementById('modalTitle').textContent = p.name;
+  document.getElementById('modalMinistry').textContent = p.ministry || 'Ministry of Infrastructure';
+  document.getElementById('modalDescription').textContent = p.description || 'No description available.';
+  document.getElementById('modalFunder').textContent = p.funder || '-';
+  document.getElementById('modalGip').textContent = p.gip || '-';
+  document.getElementById('modalApproved').textContent = Number(p.approved).toLocaleString();
+  document.getElementById('modalExpenditure').textContent = Number(p.expenditure).toLocaleString();
+  document.getElementById('modalRemaining').textContent = Number(p.remaining).toLocaleString();
+  //document.getElementById('areaCouncil').textContent = p.area_council || '';
+  document.getElementById('disasterType').textContent = p.disaster_type || '';
+
+  const statusMap = { green: 'Completed', yellow: 'Ongoing', red: 'Delayed' };
+  document.getElementById('modalStatus').textContent = statusMap[p.status] || 'Unknown';
+
+  const start = p.start_date || 'N/A';
+  const end = p.completion_date || 'N/A';
+  document.getElementById('modalTimeframe').textContent = `${start} → ${end}`;
+
+  const endDate = parseDjangoDateString(p.completion_date);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let daysText = 'N/A';
+  if (endDate) {
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.ceil((endDate - today) / msPerDay);
+
+    if (diffDays > 0) {
+      daysText = `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+    } else if (diffDays === 0) {
+      daysText = 'Due today';
+    } else {
+      const overdue = Math.abs(diffDays);
+      daysText = `Overdue by ${overdue} day${overdue === 1 ? '' : 's'}`;
+    }
   }
 
-  window.showProjectModal = function(id) {
-    const p = byId[id];
-    if (!p) return;
+  const daysEl = document.getElementById('modalDaysRemaining');
+  if (daysEl) {
+    daysEl.textContent = daysText;
+    daysEl.classList.remove('text-green-600', 'text-yellow-600', 'text-red-600');
+    if (daysText.startsWith('Overdue')) daysEl.classList.add('text-red-600');
+    else if (daysText === 'Due today') daysEl.classList.add('text-yellow-600');
+    else if (daysText !== 'N/A') daysEl.classList.add('text-green-600');
+  }
 
-    document.getElementById('modalTitle').textContent = p.name;
-    document.getElementById('modalMinistry').textContent = p.ministry || 'Ministry of Infrastructure';
-    document.getElementById('modalDescription').textContent = p.description || 'No description available.';
-    document.getElementById('modalFunder').textContent = p.funder || '-';
-    document.getElementById('modalGip').textContent = p.gip || '-';
-    document.getElementById('modalApproved').textContent = Number(p.approved).toLocaleString();
-    document.getElementById('modalExpenditure').textContent = Number(p.expenditure).toLocaleString();
-    document.getElementById('modalRemaining').textContent = Number(p.remaining).toLocaleString();
-    document.getElementById('areaCouncil').textContent = p.area_council || '';
-    document.getElementById('disasterType').textContent = p.disaster_type || '';
+  document.getElementById('projectModal').classList.remove('hidden');
 
-    const statusMap = { green: 'Completed', yellow: 'Ongoing', red: 'Delayed' };
-    document.getElementById('modalStatus').textContent = statusMap[p.status] || 'Unknown';
+  const locations = Array.isArray(p.locations) ? p.locations : [];
+  const validLocations = locations.filter(loc =>
+    loc.lat != null &&
+    loc.lng != null &&
+    !isNaN(loc.lat) &&
+    !isNaN(loc.lng)
+  );
 
-    const start = p.start_date || 'N/A';
-    const end = p.completion_date || 'N/A';
-    document.getElementById('modalTimeframe').textContent = `${start} → ${end}`;
+  const fallbackLat = p.lat || -16.7466;
+  const fallbackLng = p.lng || 167.7713;
 
-    const endDate = parseDjangoDateString(p.completion_date);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!modalMap) {
+    modalMap = L.map('modalMap', { scrollWheelZoom: false }).setView([fallbackLat, fallbackLng], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(modalMap);
 
-    let daysText = 'N/A';
-    if (endDate) {
-      const msPerDay = 1000 * 60 * 60 * 24;
-      const diffDays = Math.ceil((endDate - today) / msPerDay);
+    modalMarkersLayer = L.featureGroup().addTo(modalMap);
+  } else {
+    modalMap.invalidateSize();
+    modalMarkersLayer.clearLayers();
+  }
 
-      if (diffDays > 0) {
-        daysText = `${diffDays} day${diffDays === 1 ? '' : 's'}`;
-      } else if (diffDays === 0) {
-        daysText = 'Due today';
-      } else {
-        const overdue = Math.abs(diffDays);
-        daysText = `Overdue by ${overdue} day${overdue === 1 ? '' : 's'}`;
-      }
+  if (validLocations.length === 0) {
+    L.marker([fallbackLat, fallbackLng]).addTo(modalMarkersLayer);
+    modalMap.setView([fallbackLat, fallbackLng], 12);
+    return;
+  }
+
+  validLocations.forEach((loc, index) => {
+    const marker = L.marker([loc.lat, loc.lng]).addTo(modalMarkersLayer);
+
+    marker.bindPopup(`
+      <div>
+        <div><strong>${p.name || 'Untitled Project'}</strong></div>
+        <div>Area Council: ${loc.area_council || '—'}</div>
+        <div>Island: ${loc.island || '—'}</div>
+        <div>Site: ${loc.project_site || '—'}</div>
+      </div>
+    `);
+
+    if (index === 0) {
+      setTimeout(() => marker.openPopup(), 300);
     }
+  });
 
-    const daysEl = document.getElementById('modalDaysRemaining');
-    if (daysEl) {
-      daysEl.textContent = daysText;
-      daysEl.classList.remove('text-green-600', 'text-yellow-600', 'text-red-600');
-      if (daysText.startsWith('Overdue')) daysEl.classList.add('text-red-600');
-      else if (daysText === 'Due today') daysEl.classList.add('text-yellow-600');
-      else if (daysText !== 'N/A') daysEl.classList.add('text-green-600');
-    }
-
-    document.getElementById('projectModal').classList.remove('hidden');
-
-    const lat = p.lat || -16.7466;
-    const lng = p.lng || 167.7713;
-
-    if (!modalMap) {
-      modalMap = L.map('modalMap', { scrollWheelZoom: false }).setView([lat, lng], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(modalMap);
-      modalMarker = L.marker([lat, lng]).addTo(modalMap);
-    } else {
-      modalMap.setView([lat, lng], 12);
-      modalMarker.setLatLng([lat, lng]);
-      modalMap.invalidateSize();
-    }
-  };
+  if (validLocations.length === 1) {
+    modalMap.setView([validLocations[0].lat, validLocations[0].lng], 12);
+  } else {
+    modalMap.fitBounds(modalMarkersLayer.getBounds(), { padding: [40, 40] });
+  }
+};
 
   window.closeModal = function(e) {
     if (e && e.target !== e.currentTarget) return;
