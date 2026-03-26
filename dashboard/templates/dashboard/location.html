@@ -259,7 +259,6 @@ document.addEventListener("DOMContentLoaded", function () {
   function openDrawer(){
     drawer.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
-    // Leaflet needs a resize check when overlays change
     setTimeout(() => map.invalidateSize(), 250);
   }
 
@@ -277,7 +276,6 @@ document.addEventListener("DOMContentLoaded", function () {
   closeDrawerBtn?.addEventListener("click", closeDrawer);
   drawerHandleTap?.addEventListener("click", toggleDrawer);
 
-  // Optional: ESC closes drawer
   document.addEventListener("keydown", (e) => {
     if(e.key === "Escape" && drawer.classList.contains("open")){
       closeDrawer();
@@ -327,30 +325,38 @@ document.addEventListener("DOMContentLoaded", function () {
     return (s || "").toString().trim().toLowerCase();
   }
 
+  // Build ALL markers for ALL project locations
   projects.forEach(proj => {
-    if (proj.lat != null && proj.lng != null && !isNaN(proj.lat) && !isNaN(proj.lng)) {
-      const marker = L.marker([proj.lat, proj.lng]);
+    const locations = Array.isArray(proj.locations) ? proj.locations : [];
 
-      marker.bindPopup(`
-        <div class="font-medium">${proj.name || "Untitled Project"}</div>
-        <div class="text-xs mt-1">
-          GIP: ${proj.gip || "No GIP"}<br>
-          AC: ${proj.area_council || "—"}<br>
-          ${proj.funder ? `Funder: ${proj.funder}<br>` : ""}
-          Spent: ${proj.spent_pct}% • Progress: ${proj.progress_pct}%<br>
-          Status: <span style="color:${
-            proj.status === 'green' ? '#22c55e' :
-            proj.status === 'yellow' ? '#eab308' : '#ef4444'
-          }">⬤</span>
-        </div>
-      `);
+    locations.forEach(loc => {
+      if (loc.lat != null && loc.lng != null && !isNaN(loc.lat) && !isNaN(loc.lng)) {
+        const marker = L.marker([loc.lat, loc.lng]);
 
-      marker._projectId = proj.id;
-      marker._areaCouncil = normalize(proj.area_council || "");
+        marker.bindPopup(`
+          <div class="font-medium">${proj.name || "Untitled Project"}</div>
+          <div class="text-xs mt-1">
+            GIP: ${proj.gip || "No GIP"}<br>
+            AC: ${loc.area_council || "—"}<br>
+            Island: ${loc.island || "—"}<br>
+            Site: ${loc.project_site || "—"}<br>
+            ${proj.funder ? `Funder: ${proj.funder}<br>` : ""}
+            Spent: ${proj.spent_pct}% • Progress: ${proj.progress_pct}%<br>
+            Status: <span style="color:${
+              proj.status === 'green' ? '#22c55e' :
+              proj.status === 'yellow' ? '#eab308' : '#ef4444'
+            }">⬤</span>
+          </div>
+        `);
 
-      markersCluster.addLayer(marker);
-      allMarkers.push(marker);
-    }
+        marker._projectId = proj.id;
+        marker._areaCouncil = normalize(loc.area_council || "");
+        marker._locationId = loc.id;
+
+        markersCluster.addLayer(marker);
+        allMarkers.push(marker);
+      }
+    });
   });
 
   function showOnlyAreaCouncil(areaCouncilName) {
@@ -388,20 +394,30 @@ document.addEventListener("DOMContentLoaded", function () {
   function showOnlyProjectMarker(projectId) {
     if (!projectId) return;
 
-    let targetMarker = null;
+    const projectMarkers = [];
 
     allMarkers.forEach(m => {
       if (m._projectId === projectId) {
         if (!markersCluster.hasLayer(m)) markersCluster.addLayer(m);
-        targetMarker = m;
+        projectMarkers.push(m);
       } else {
         markersCluster.removeLayer(m);
       }
     });
 
-    if (targetMarker) {
-      map.flyTo(targetMarker.getLatLng(), 13, { animate: true, duration: 0.7 });
-      setTimeout(() => targetMarker.openPopup(), 800);
+    if (projectMarkers.length === 1) {
+      const marker = projectMarkers[0];
+      map.flyTo(marker.getLatLng(), 13, { animate: true, duration: 0.7 });
+      setTimeout(() => marker.openPopup(), 800);
+      return;
+    }
+
+    if (projectMarkers.length > 1) {
+      const group = L.featureGroup(projectMarkers);
+      map.fitBounds(group.getBounds(), { padding: [50, 50] });
+
+      // optionally open the first popup
+      setTimeout(() => projectMarkers[0].openPopup(), 500);
     }
   }
 
@@ -428,11 +444,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const searchInput = document.getElementById("tableSearch");
     if (searchInput) searchInput.value = "";
 
-    // remove row highlight
     document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
   }
 
-  // GeoJSON load
   fetch(areaCouncilsUrl, { cache: "no-store" })
     .then(r => {
       if (!r.ok) throw new Error(`GeoJSON fetch failed: ${r.status}`);
@@ -461,7 +475,6 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .catch(err => console.error("Area Councils GeoJSON error:", err));
 
-  // Row click behavior (kept) + auto-close drawer + highlight row
   const tableEl = document.getElementById("projectsTable");
   if (tableEl) {
     tableEl.addEventListener("click", e => {
@@ -473,25 +486,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (isNaN(projectId)) return;
 
-      // highlight row
       document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
       row.classList.add("row-selected");
 
       showOnlyProjectMarker(projectId);
       showOnlyAreaCouncil(areaCouncil);
 
-      // ✅ Auto-close the drawer after selection (comment out if you prefer it stays open)
       closeDrawer();
     });
   }
 
-  // Reset triggers
   document.getElementById("resetMapBtn")?.addEventListener("click", resetToAll);
   map.on("dblclick", resetToAll);
 
-  // ─────────────────────────────────────────────
-  // Table search (simple client-side)
-  // ─────────────────────────────────────────────
   const searchInput = document.getElementById("tableSearch");
   if (searchInput) {
     searchInput.addEventListener("input", () => {
