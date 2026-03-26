@@ -15,6 +15,8 @@ urlpatterns = [
     path('projects/', views.projects, name='projects'),
     path('location/', views.location, name='location'),
     path('timeline/', views.timeline, name='timeline'),
+    path('reports/', views.reports, name='reports'),
+
     #ATTACHEMENT DOWNLOAD
     path("gip/<int:pk>/download/", views.download_gip, name="download_gip"),
     #AUTHENTICATION
