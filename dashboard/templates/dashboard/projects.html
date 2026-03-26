@@ -1,7 +1,7 @@
 {% extends 'dashboard/base.html' %}
 
 {% block uploaded_reports %}
-<div class="mt-8">
+<!--<div class="mt-8">
   <div class="text-xs uppercase text-slate-500 font-medium mb-4">UPLOADED REPORTS</div>
   <div class="space-y-3 max-h-96 overflow-y-auto">
     {% for report in REPORTS %}
@@ -21,7 +21,7 @@
       <p class="text-xs text-slate-400">+ {{ MORE_REPORTS_COUNT }} more reports</p>
     </div>
   </div>
-</div>
+</div>-->
 {% endblock uploaded_reports %}
 
 {% block content %}
@@ -209,9 +209,9 @@
                 </div>
               </td>
               <td class="px-4 py-3 font-medium border-r-4 border-slate-300">{{ p.gip }}
-                <a href="{% url 'download_gip' p.id %}" class="text-blue-700 hover:text-blue-900 no-underline">
+                <!--<a href="{% url 'download_gip' p.id %}" class="text-blue-700 hover:text-blue-900 no-underline">
                   <span class="ml-2 text-xs text-slate-500">⬇️</span>
-                </a>
+                </a>-->
               </td>
               <td class="px-4 py-3">{{ p.funder }}</td>
               <td class="px-4 py-3">VT {{ p.approved|intcomma }}</td>
