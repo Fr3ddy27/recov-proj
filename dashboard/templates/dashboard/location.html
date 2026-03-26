@@ -45,6 +45,39 @@
   }
   .map-btn:active{ transform: translateY(0); }
 
+  .map-select{
+    border: 1px solid rgba(226,232,240,1);
+    background: white;
+    border-radius: 12px;
+    padding: 10px 36px 10px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(15,23,42,.10);
+    transition: box-shadow .12s ease, transform .08s ease, border-color .12s ease;
+    white-space: nowrap;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    min-width: 190px;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #64748b 50%),
+      linear-gradient(135deg, #64748b 50%, transparent 50%);
+    background-position:
+      calc(100% - 18px) calc(50% - 2px),
+      calc(100% - 12px) calc(50% - 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+  }
+  .map-select:hover{
+    box-shadow: 0 14px 36px rgba(15,23,42,.14);
+    transform: translateY(-1px);
+  }
+  .map-select:focus{
+    outline: none;
+    border-color: rgba(37,99,235,.55);
+    box-shadow: 0 0 0 4px rgba(37,99,235,.12), 0 10px 30px rgba(15,23,42,.10);
+  }
+
   /* Bottom drawer */
   .drawer{
     position: fixed;
@@ -140,6 +173,11 @@
   <!-- Floating controls -->
   <div class="map-controls">
     <button id="openTableBtn" class="map-btn">📋 Projects</button>
+
+    <select id="areaCouncilFilter" class="map-select" aria-label="Filter by Area Council">
+      <option value="">All Area Councils</option>
+    </select>
+
     <button id="resetMapBtn" class="map-btn">Reset Map</button>
   </div>
 
@@ -321,6 +359,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const allMarkers = [];
   const projects = {{ PROJECTS_JSON|safe }};
 
+  populateAreaCouncilFilter();
+
   function normalize(s) {
     return (s || "").toString().trim().toLowerCase();
   }
@@ -348,6 +388,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }">⬤</span>
           </div>
         `);
+
+        // 👇 ADD THIS
+        marker.on("mouseover", function () {
+          this.openPopup();
+        });
+
+        marker.on("mouseout", function () {
+          this.closePopup();
+        });
 
         marker._projectId = proj.id;
         marker._areaCouncil = normalize(loc.area_council || "");
@@ -391,6 +440,102 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function filterTableByAreaCouncil(areaCouncilName) {
+    const target = normalize(areaCouncilName);
+
+    document.querySelectorAll("#projectsTable tbody tr").forEach(tr => {
+      const rowAreaCouncil = normalize(tr.dataset.areaCouncil || "");
+      tr.style.display = !target || rowAreaCouncil === target ? "" : "none";
+    });
+  }
+
+  function showMarkersForAreaCouncil(areaCouncilName) {
+    const target = normalize(areaCouncilName);
+
+    allMarkers.forEach(marker => {
+      const matches = !target || marker._areaCouncil === target;
+      if (matches) {
+        if (!markersCluster.hasLayer(marker)) markersCluster.addLayer(marker);
+      } else {
+        markersCluster.removeLayer(marker);
+      }
+    });
+
+    if (!target) {
+      return;
+    }
+
+    const visibleMarkers = allMarkers.filter(marker => marker._areaCouncil === target);
+
+    if (visibleMarkers.length === 1) {
+      const marker = visibleMarkers[0];
+      map.flyTo(marker.getLatLng(), 11, { animate: true, duration: 0.7 });
+      setTimeout(() => marker.openPopup(), 500);
+      return;
+    }
+
+    if (visibleMarkers.length > 1) {
+      const group = L.featureGroup(visibleMarkers);
+      map.fitBounds(group.getBounds(), { padding: [50, 50] });
+      return;
+    }
+
+    showOnlyAreaCouncil(areaCouncilName);
+  }
+
+  function applyAreaCouncilFilter(areaCouncilName) {
+    const target = normalize(areaCouncilName);
+
+    document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
+    filterTableByAreaCouncil(target);
+
+    if (!target) {
+      if (selectedAreaLayer) {
+        map.removeLayer(selectedAreaLayer);
+        selectedAreaLayer = null;
+      }
+
+      if (areaCouncilsLayer && !map.hasLayer(areaCouncilsLayer)) {
+        areaCouncilsLayer.addTo(map);
+      }
+
+      showMarkersForAreaCouncil("");
+      if (areaCouncilsLayer && areaCouncilsLayer.getBounds().isValid()) {
+        map.fitBounds(areaCouncilsLayer.getBounds(), { padding: [40, 40] });
+      } else {
+        map.setView([-16.7466, 167.7713], 7);
+      }
+      return;
+    }
+
+    showOnlyAreaCouncil(target);
+    showMarkersForAreaCouncil(target);
+  }
+
+  function populateAreaCouncilFilter() {
+    const select = document.getElementById("areaCouncilFilter");
+    if (!select) return;
+
+    const areaCouncils = new Set();
+
+    projects.forEach(proj => {
+      const locations = Array.isArray(proj.locations) ? proj.locations : [];
+      locations.forEach(loc => {
+        const ac = (loc.area_council || "").toString().trim();
+        if (ac) areaCouncils.add(ac);
+      });
+    });
+
+    Array.from(areaCouncils)
+      .sort((a, b) => a.localeCompare(b))
+      .forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+  }
+
   function showOnlyProjectMarker(projectId) {
     if (!projectId) return;
 
@@ -422,6 +567,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function resetToAll() {
+    const areaCouncilFilter = document.getElementById("areaCouncilFilter");
+    if (areaCouncilFilter) areaCouncilFilter.value = "";
+
     allMarkers.forEach(m => {
       if (!markersCluster.hasLayer(m)) markersCluster.addLayer(m);
     });
@@ -444,7 +592,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const searchInput = document.getElementById("tableSearch");
     if (searchInput) searchInput.value = "";
 
-    document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
+    document.querySelectorAll("#projectsTable tbody tr").forEach(tr => {
+      tr.classList.remove("row-selected");
+      tr.style.display = "";
+    });
   }
 
   fetch(areaCouncilsUrl, { cache: "no-store" })
@@ -486,6 +637,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (isNaN(projectId)) return;
 
+      const areaCouncilFilter = document.getElementById("areaCouncilFilter");
+      if (areaCouncilFilter) areaCouncilFilter.value = areaCouncil;
+
       document.querySelectorAll("#projectsTable tbody tr").forEach(tr => tr.classList.remove("row-selected"));
       row.classList.add("row-selected");
 
@@ -496,6 +650,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  document.getElementById("areaCouncilFilter")?.addEventListener("change", (e) => {
+    applyAreaCouncilFilter(e.target.value || "");
+  });
+
   document.getElementById("resetMapBtn")?.addEventListener("click", resetToAll);
   map.on("dblclick", resetToAll);
 
@@ -503,9 +661,14 @@ document.addEventListener("DOMContentLoaded", function () {
   if (searchInput) {
     searchInput.addEventListener("input", () => {
       const q = searchInput.value.toLowerCase().trim();
+      const selectedAreaCouncil = normalize(document.getElementById("areaCouncilFilter")?.value || "");
+
       document.querySelectorAll("#projectsTable tbody tr").forEach(tr => {
         const text = tr.innerText.toLowerCase();
-        tr.style.display = text.includes(q) ? "" : "none";
+        const rowAreaCouncil = normalize(tr.dataset.areaCouncil || "");
+        const matchesSearch = text.includes(q);
+        const matchesAreaCouncil = !selectedAreaCouncil || rowAreaCouncil === selectedAreaCouncil;
+        tr.style.display = matchesSearch && matchesAreaCouncil ? "" : "none";
       });
     });
   }
