@@ -79,11 +79,19 @@
         </div> -->
 
         <nav class="space-y-2">
+          <a href="{% url 'location' %}"
+             class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
+             {% if request.path == '/location/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
+            <img src="{% static 'images/map.png' %}" class="w-5 h-5 mr-2" alt="Location"/>
+            <span class="nav-label">OVERVIEW</span>
+          </a>
+
+
           <a href="{% url 'overview' %}"
              class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
              {% if request.path == '/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
             <img src="{% static 'images/overview.png' %}" class="w-5 h-5 mr-2" alt="Overview"/>
-            <span class="nav-label">OVERVIEW</span>
+            <span class="nav-label">SUMARRY</span>
           </a>
 
           <a href="{% url 'projects' %}"
@@ -93,12 +101,7 @@
             <span class="nav-label">PROJECTS</span>
           </a>
 
-          <a href="{% url 'location' %}"
-             class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
-             {% if request.path == '/location/' %}bg-brand-blue text-white{% else %}hover:bg-slate-100{% endif %}">
-            <img src="{% static 'images/map.png' %}" class="w-5 h-5 mr-2" alt="Location"/>
-            <span class="nav-label">LOCATION</span>
-          </a>
+
 
           <a href="{% url 'timeline' %}"
              class="nav-link flex items-center px-4 py-2 rounded-lg text-sm font-semibold
