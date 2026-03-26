@@ -1,0 +1,121 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+
+<div class="px-6 py-6 md:px-10">
+  <form method="get" class="mb-8">
+    
+    <h2>Select a Recovery Program</h2>
+
+    <div class="flex flex-col md:flex-row md:items-end gap-3">
+      <div class="relative w-full max-w-sm">
+        <select
+          name="program"
+          id="program"
+          onchange="this.form.submit()"
+          class="w-full appearance-none rounded-md border border-slate-400 bg-white px-4 py-3 pr-12 text-slate-700 shadow-sm focus:border-blue-600 focus:outline-none"
+        >
+          <option value="">All Programs</option>
+          {% for program in programs %}
+            <option value="{{ program }}" {% if selected_program == program %}selected{% endif %}>
+              {{ program }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-500">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+          </svg>
+        </div>
+      </div>
+
+      {% if selected_program %}
+        <a
+          href="{% url 'reports' %}"
+          class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Clear filter
+        </a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div class="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+      Recovery Projects by Ministries
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm text-slate-700">
+        <thead>
+          <tr class="rounded-xl bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <th class="px-5 py-4 text-left">Project Title</th>
+            <th class="px-5 py-4 text-left">GIP</th>
+            <th class="px-5 py-4 text-left">Publication Date</th>
+            <th class="px-5 py-4 text-left">Recovery Program</th>
+            <th class="px-5 py-4 text-center">Download</th>
+          </tr>
+        </thead>
+
+        <tbody class="divide-y divide-slate-200">
+          {% for project in projects %}
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="px-5 py-5 font-medium">
+                {{ project.project_title|default:"-" }}
+              </td>
+              <td class="px-5 py-5">
+                {{ project.gip|default:"-" }}
+              </td>
+              <td class="px-5 py-5">
+                {% if project.start_date %}
+                  {{ project.start_date|date:"d M Y" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="px-5 py-5">
+                {{ project.program|default:"-" }}
+              </td>
+            <td class="px-5 py-5 text-center">
+              {% with indicator=project.status_indicators.first %}
+                
+                {% if indicator and indicator.attachment %}
+                  <a href="{{ indicator.attachment.url }}" download
+                    class="inline-flex items-center justify-center text-slate-700 hover:text-blue-700"
+                    title="Download">
+                    
+                    <!-- Download Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" 
+                        class="w-6 h-6" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor" 
+                        stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 3v12m0 0l4-4m-4 4l-4-4M5 21h14" />
+                    </svg>
+
+                  </a>
+                {% else %}
+                  <span class="text-slate-400">-</span>
+                {% endif %}
+
+              {% endwith %}
+            </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="px-5 py-10 text-center text-slate-500">
+                No projects found for the selected program.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
