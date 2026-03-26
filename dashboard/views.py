@@ -218,36 +218,64 @@ def get_status_pie():
         {"label": "Delayed", "value": delayed},
     ]
 # ==================== MINISTRY SUMMARY ====================
+from django.db.models import Sum, Count, Value
+from django.db.models.functions import Coalesce, Trim, Lower
+
 def get_ministry_summary():
     data = []
+
     qs = (
         RecoveryProject.objects
-        .values("implementing_agency")
+        .annotate(
+            agency_normalized=Lower(
+                Trim(
+                    Coalesce("implementing_agency", Value("Unknown Agency"))
+                )
+            )
+        )
+        .values("agency_normalized")
         .annotate(
             num_projects=Count("project_id"),
             approved=Sum("project_total_funding_vt"),
             expenditure=Sum("project_expenditure"),
         )
-        .order_by("implementing_agency")
+        .order_by("agency_normalized")
     )
+
     for row in qs:
         approved = row["approved"] or Decimal("0")
         expenditure = row["expenditure"] or Decimal("0")
         remaining = approved - expenditure
         if remaining < 0:
             remaining = Decimal("0")
+
         spent_pct = int((expenditure / approved) * 100) if approved > 0 else 0
         spent_pct = max(0, min(spent_pct, 100))
-        projects = RecoveryProject.objects.filter(
-            implementing_agency=row["implementing_agency"]
-        )
+
+        projects = RecoveryProject.objects.annotate(
+            agency_normalized=Lower(
+                Trim(
+                    Coalesce("implementing_agency", Value("Unknown Agency"))
+                )
+            )
+        ).filter(agency_normalized=row["agency_normalized"])
+
         if projects.exists():
             avg_progress = sum(calculate_indicator_progress(p) for p in projects) / projects.count()
+            display_name = (
+                projects.exclude(implementing_agency__isnull=True)
+                .exclude(implementing_agency__exact="")
+                .first()
+                .implementing_agency.strip()
+            )
         else:
             avg_progress = 0
+            display_name = "Unknown Agency"
+
         status = calculate_status(avg_progress)
+
         data.append({
-            "ministry": row["implementing_agency"],
+            "ministry": display_name,
             "num_projects": row["num_projects"],
             "approved": int(approved),
             "expenditure": int(expenditure),
@@ -256,6 +284,7 @@ def get_ministry_summary():
             "avg_progress_pct": int(avg_progress),
             "status": status,
         })
+
     return data
 # ==================== OVERALL STATS ====================
 def get_recovery_budget():
@@ -322,6 +351,8 @@ def location(request):
     return render(request, "dashboard/location.html", common_context())
 def timeline(request):
     return render(request, "dashboard/timeline.html", common_context())
+def reports(request):
+    return render(request, "dashboard/reports.html", common_context())
 # ==================== AREA COUNCIL JSON ====================
 @require_GET
 def area_councils_json(request):
@@ -830,3 +861,45 @@ def download_status_indicator_attachment(request, pk):
         as_attachment=True,
         filename=os.path.basename(ind.attachment.name),
     )
+
+
+################ REPORTS ###############
+from django.shortcuts import render
+from .models import RecoveryProject
+
+
+from django.db.models import Prefetch
+from .models import RecoveryProject, ProjectStatusIndicators
+
+def reports(request):
+    selected_program = request.GET.get("program", "").strip()
+
+    projects = RecoveryProject.objects.prefetch_related(
+        Prefetch(
+            "status_indicators",
+            queryset=ProjectStatusIndicators.objects.exclude(attachment__isnull=True).exclude(attachment=""),
+        )
+    )
+
+    if selected_program:
+        projects = projects.filter(program=selected_program)
+
+    # 🔥 ONLY keep projects that actually have attachments
+    projects = [
+        p for p in projects
+        if p.status_indicators.exists()
+    ]
+
+    programs = (
+        RecoveryProject.objects.exclude(program__isnull=True)
+        .exclude(program__exact="")
+        .values_list("program", flat=True)
+        .distinct()
+        .order_by("program")
+    )
+
+    return render(request, "dashboard/reports.html", {
+        "projects": projects,
+        "programs": programs,
+        "selected_program": selected_program,
+    })
