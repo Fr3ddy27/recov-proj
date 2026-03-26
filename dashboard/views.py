@@ -79,35 +79,59 @@ def calculate_indicator_progress(project: RecoveryProject) -> int:
 # ==================== PROJECT DATA ====================
 def get_projects():
     """
-    Dashboard uses ONE location per project for map/pins and table summary.
-    With normalized models, a project can have MANY locations.
-    Here we choose the first location row (lowest id) as the "primary" one.
+    Dashboard uses ALL locations per project for the map.
+    We still expose the first location as the summary location for the table/filter,
+    but each project now includes a `locations` array.
     """
     projects = []
-    # Map project_id -> first location row
+
     loc_qs = (
         ProjectLocations.objects
         .select_related("project")
         .order_by("project_id", "id")
     )
+
+    locations_by_project = {}
     first_location = {}
+
     for loc in loc_qs:
         pid = getattr(loc, "project_id", None)
-        if pid is not None and pid not in first_location:
+        if pid is None:
+            continue
+
+        lat = parse_coord(loc.gps_latitude)
+        lng = parse_coord(loc.gps_longtitude)
+
+        locations_by_project.setdefault(pid, []).append({
+            "id": loc.id,
+            "province": loc.province,
+            "island": loc.island,
+            "area_council": loc.area_council,
+            "project_site": loc.project_site,
+            "lat": lat,
+            "lng": lng,
+        })
+
+        if pid not in first_location:
             first_location[pid] = loc
+
     for p in RecoveryProject.objects.all():
         approved = p.project_total_funding_vt or Decimal("0")
         expenditure = p.project_expenditure or Decimal("0")
         remaining = approved - expenditure
         if remaining < 0:
             remaining = Decimal("0")
+
         spent_pct = int((expenditure / approved) * 100) if approved > 0 else 0
         spent_pct = max(0, min(spent_pct, 100))
+
         progress_pct = calculate_indicator_progress(p)
         status = calculate_status(progress_pct)
+
         loc = first_location.get(p.project_id)
         lat = parse_coord(loc.gps_latitude) if loc else None
         lng = parse_coord(loc.gps_longtitude) if loc else None
+
         projects.append({
             "id": p.project_id,
             "name": p.project_title,
@@ -125,11 +149,19 @@ def get_projects():
             "status": status,
             "start_date": p.start_date.strftime("%d %b %Y") if p.start_date else None,
             "completion_date": p.completion_date.strftime("%d %b %Y") if p.completion_date else None,
+
+            # keep these for backward compatibility / summary use
             "lat": lat,
             "lng": lng,
+
+            # NEW: all project locations
+            "locations": locations_by_project.get(p.project_id, []),
+
             "description": p.project_description,
         })
+
     return projects
+
 # ==================== FUNDING SOURCES ====================
 def get_funding_sources():
     qs = (
